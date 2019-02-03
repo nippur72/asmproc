@@ -14,6 +14,27 @@
 // TODO change float into cbmfloat, output as comment
 // TODO basic compact by default // preserve
 
+/*
+TO DO
+=====
+
+- loop forever
+- : and ; in quotes
+- dim
+- // comment
+- float
+- float expr compiler
+- line numbers
+- else if
+- then statement con endif automatico
+- (...) in sub
+- inline sub / call sub
+- inline sub / call
+- controllare operatori signed <,>,
+- condizioni a<>#0 ==> if zero
+
+*/
+
 import fs from "fs";
 
 import commandLineArgs, { OptionDefinition } from 'command-line-args';

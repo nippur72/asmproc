@@ -1,273 +1,429 @@
-ASMPROC - quick reference manual 
-================================
-
-Asmproc is (C) 2006-2007 Antonino Porcino (Nippur72)
-and is freely distributable.
-
-WHAT IS
+ASMPROC
 =======
 
-Asmproc is a WIN32 tool that extends the DASM assembler 
-syntax adding some new useful features. It works as
-a pre-assembler: the source file is processed and another 
-file is created. The created file can be then fed into
-DASM for final assembly step. 
+Asmproc is high-level Assembly language for the 6502 processor that
+extends the 6502 assembly language with structured programming, typical of
+high level languages like C, Pascal and Basic.
+
+It's a super-set of the normal 6502 assembly, but you can think of it
+as a language of its own. 
+
+
+THE COMPILER
+============
+
+Asmproc does not directly produce executables; its output is instead
+an .asm file that can be assembled with an external assembler (currently 
+only DASM is supported). This because ASMPROC was born as a preprocess
+for .asm files.
+
+INSTALLATION
+============
+
+From the command prompt:
+```
+npm i -g asmproc
+```
 
 USAGE
 =====
 
-   The usage is simply: ASMPROC <inputfile> <destfile>
+From the command propt:
+```
+asmproc -i <inputfile> -o <destfile>
+```
 
-   - <inputfile> is the source file written according 
-   to the asmproc syntax
+- <inputfile> is the source file written according 
+to the Asmproc syntax
 
-   - <destfile> is the destination file that is going 
-   to be compiled with DASM.
+- <destfile> is the destination file that is going 
+to be compiled with DASM.
 
-   both <inputfile> and <destfile> are plain text files.
+Both <inputfile> and <destfile> are plain text files.
 
-   If Asmproc fails to compile due to an error in the source file
-   the %ERRORLEVEL% shell variable is set to value -1 so that 
-   the compiling script can be stopped. %ERRORLEVEL% is 0 if
-   Asmproc has worked correctly.
+If Asmproc fails to compile due to an error in the source file
+the `%ERRORLEVEL%` shell variable is set to `-1` so that 
+the compiling script can be stopped. So `%ERRORLEVEL%` is 0 if
+Asmproc has worked correctly.
+
+LANGUAGE QUICK REFERENCE
+========================
 
 COMMENTS
 ========
 
-    C-style comments /* */, not nested, are permitted. 
+C-style comments /* */, not nested, are permitted. 
+
+CASE SENSITIVITY
+================
+
+Asmproc is not case sensitive. All is converted uppercase.
 
 STATEMENT SEPARATION
 ====================
     
-    Statements can be separed onto a single line by ":". Space character
-    is neede before and after the semicolon (" : "). Placing a semicolon
-    in a "if-then" statement on a single line may cause confusion as 
-    the statement after the semicolon is not considered part of the "if-then"
-    branch, but a statement of its own. 
+Statements can be separed onto a single line by `":"`. Space character
+is neede before and after the semicolon (`" : "`). Placing a semicolon
+in a "if-then" statement on a single line may cause confusion as 
+the statement after the semicolon is not considered part of the "if-then"
+branch, but a statement of its own. 
+
+Example:
+```
+INX : INX : STX $FF
+```
 
 IF-THEN 
 =======
 
-    if <condition> then
-      <blockthen>
-    else
-      <blockelse>
-    end if  /* or endif */
+On multiple lines:
+```
+if <condition> then
+   <blockthen>
+else
+   <blockelse>
+end if  /* or endif */
+```
+The `else` branch is optional.
 
-    if <condition> then
-       <blockthen>
-    end if /* or endif */
+On a single line:
+```
+if <condition> then statement
+if <condition> then goto <label>
+if <condition> then exit repeat
+if <condition> then exit do
+if <condition> then exit while
+if <condition> then exit for
+if <condition> then exit sub
+```
 
-    if <condition> then goto <label>
-    if <condition> then exit repeat
-    if <condition> then exit do
-    if <condition> then exit while
-    if <condition> then exit for
-    if <condition> then exit sub
+Example:
+```
+if carry then LDA $FF
+```
 
 REPEAT-UNTIL
 ============
 
-   repeat 
-      <block>
-      [exit repeat]
-   until <condition>
+Repeat a block until a condition is met.
+```
+repeat 
+   <block>
+   [exit repeat]
+until <condition>
+```
+
+Example:
+```
+repeat   
+   inx
+until x<#20   
+```
 
 DO-LOOP
 =======
 
-   do
-      <block>
-      [exit do]
-   loop while <condition>   /* or: loop if <condition> */
+Executes a loop while a condition is met. 
 
-   do
-      <block>
-      [exit do]
-   loop until <condition>  
+```
+do
+   <block>
+   [exit do]
+loop while <condition>   /* or: loop if <condition> */
+
+do
+   <block>
+   [exit do]
+loop until <condition>  /* loop if condition is NOT true */
+```
+
+Example:
+```
+do
+   inx
+loop until x<#20   
+```
 
 WHILE-WEND
 ==========
 
-   while <condition>
-      <block>
-      [exit while]
-   wend
+Executes a loop while a condition is met. 
+```
+while <condition>
+   <block>
+   [exit while]
+wend
+```
+
+Example:
+```
+while x<#20
+   inx
+wend
+```
 
 FOR-NEXT
 ========
 
-    for <register>=<start> to <end> [step <step>]
-       <block>
-       [exit for]
-    next
+Executes a FOR loop.
+```
+for <register>=<start> to <end> [step <step>]
+   <block>
+   [exit for]
+next
+```
 
-    Register can be A,X,Y or memory location.
+- <register> can be A,X,Y or a memory location.
+- <start> can be a costant or memory location.
+- <end> is a fixed constant
+- <step> constant from #-4 to #4 (because internally it's translated with INCs and DECs).
 
-    While <Start> can be a costant or memory location,
-    <End> and <Step> need to be fixed costants; in 
-    particular <Step> can be only from #-4 to #4 (because
-    it's translated with incs and decs).
+When using a memory location the value in A register is lost because it's used in
+the loop initialization/compare. 
 
-    When using a memory location the value
-    in A register is lost because it's used in
-    the loop initialization and compare. 
-    
-
+Example:
+```
+FOR X=#1 TO #20
+   TXA
+NEXT
+```
+        
 EXPRESSING CONDITIONS
 =====================
 
-    All <conditions> expressed in control and looping statements 
-    can be one of these:
+All <conditions> expressed in control and looping statements can be one of these:
 
-    Z=1, ZERO, EQUAL  
-    Z=0, NOT ZERO, NOT EQUAL
-    C=1, CARRY
-    C=0, NOT CARRY
-    N=1, NEGATIVE
-    N=0, NOT NEGATIVE
-    V=1, OVERFLOW
-    V=0, NOT OVERFLOW
+Flags:
+   Z=1, ZERO, EQUAL  
+   Z=0, NOT ZERO, NOT EQUAL
+   C=1, CARRY
+   C=0, NOT CARRY
+   N=1, NEGATIVE
+   N=0, NOT NEGATIVE
+   V=1, OVERFLOW
+   V=0, NOT OVERFLOW
 
-    A <operator> <value>
-    X <operator> <value>
-    Y <operator> <value>
-    <memory> <operator> <value>
-    <memory> IS [NOT] ZERO
-    <memory> IS [NOT] NEGATIVE
+Registers:
+   A <operator> <value>
+   X <operator> <value>
+   Y <operator> <value>
 
-    <operator> can be: <, >, <=, >=, <>, !=, ==, =,
+Memory:
+   <memory> <operator> <value>
+   <memory> IS [NOT] ZERO
+   <memory> IS [NOT] NEGATIVE
 
-    <memory> specifies a memory location and the compare
-    operation is done via the accumulator unless specified
-    with one of predicates "(using x)" or "(using y)". 
-    The operator "IS" syntax allows to avoid the 
-    CMP istruction. 
+<operator> can be: <, >, <=, >=, <>, !=, ==, =,
 
-    Compare operation is always unsigned unless the 
-    predicate "(signed)" is specified.     
+<memory> specifies a memory location and the needed compare
+operation is done via the accumulator unless specified
+with one of predicates "(using x)" or "(using y)". 
+
+The "IS" syntax allows to avoid a CMP istruction.
+
+Compare operation is always unsigned unless the predicate "(signed)" is specified.     
+
+Examples:
+
+```
+if ZERO then rts        ; return if zero flag
+if Z=1 then rts         ; return if zero flag
+if A IS ZERO then rts   ; return if A is zero
+if A=#0 then rts        ; return if A is zero
+if A>#15 then rts       ; return if A is > 15
+if (signed) X < #-5     ; return if X is less than -5, with X meant as a signed value
+```
  
-
 SUBROUTINE DEFINITION
 =====================
-    
+
+Subroutines
+```
     sub <Name>[()]
         <block>
-    end sub         /* end sub does an rts */
+        [exit sub]
+    end sub         /* rts is added automatically*/
+```
+
+Example
+```
+SUB mysub()
+   lda $03
+   if a<#10 then exit sub
+   lda #$ff
+END SUB
+```
 
 BITMAP CHARACTER COSTANTS
 =========================
-    
-    bitmap <code>
 
-    For single-color <code> is 8-character 
-       "." or "-" or "0" equals to bit 0
-       Any other character equals to bit 1
+Define bitmap values, e.g. for sprite or character redefinition.
 
-    For multicolor <code> is 4-character
-       "." or "-" or "0" equals to bits 00  background color
-       "A" or "1"        equals to bits 01  border color
-       "B" or "2"        equals to bits 10  foreground color
-       "F" or "3"        equals to bits 11  auxiliary color (36878's high nibble)
+```    
+bitmap <code>
+```
+
+For single-color <code> is 8-character 
+- "." or "-" or "0" equals to bit 0
+- Any other character equals to bit 1
+
+For multicolor <code> is 4-character
+- "." or "-" or "0" equals to bits 00  background color
+- "A" or "1"        equals to bits 01  border color
+- "B" or "2"        equals to bits 10  foreground color
+- "F" or "3"        equals to bits 11  auxiliary color (36878's high nibble)
+
+Example: 
+```
+  bitmap  ...XX...
+  bitmap  ..XXXX..
+  bitmap  .XX..XX.
+  bitmap  .XXXXXX.
+  bitmap  .XX..XX.
+  bitmap  .XX..XX.
+  bitmap  .XX..XX.
+  bitmap  ........
+```
 
 FLOATING POINT COSTANTS
 =======================
 
-    [label] float value[,value...]
+Defines a floating point costant in CBM format (5 bytes).
 
-    Defines a floating point costant in CBM format (5 bytes).
+```
+[label] float value[,value...]
+```
 
+Example:
+```
+PI: float 3.14
+```
+    
 MACRO DEFINITION
 ================
 
-    macro <macroname> <parameter>,<parameter>,...
-        <body>
-    end macro
+```
+macro <macroname> <parameter>,<parameter>,...
+   <body>
+end macro
+```
 
-    Macros are polymorhpic, that is, more macros with the same name 
-    but with different parameter specification can be defined.
+<parameter> can be:
 
-    <parameter> can be:
+- const - meaning a costant value (6502's immediate mode '#')
+- mem - meaning a memory location (6502's absolute or zero page mode)
+- indirect - pointer deference (6502's indirect mode, enclosed in ())
+- "quoted value" - any literal value.
 
-        const - meaning a costant value (6502's immediate mode '#')
-        mem - meaning a memory location (6502's absolute or zero page mode)
-        indirect - pointer deference (6502's indirect mode, enclosed in ())
-        "quoted value" - any literal value.
+Macros are polymorhpic, that is, more macros with the same name 
+but with different parameter specification can be defined.
+
+Example: 
+```
+macro poke mem, const
+   lda #{2}   
+   sta {1}
+end macro
+
+poke 32768, #128
+
+macro ldx indirect, "a"
+   tay
+   lda ({1}), y
+   txa   
+end macro
+
+ldx ($ff), a
+```
 
 INLINE BASIC
 ============
 
-    basic start [compact]
-       <basic v2.0 text here>    
-    basic end   
+```
+basic start [compact]
+   <basic v2.0 text here>    
+basic end   
+```
 
-    Allows to enter basic programs directly from the assembler source.
-    Enclosing an assembler symbol (e.g. a label) in "{}" causes the corresponding 
-    4-digit decimal number to be entered in the basic text as tokens. It is thus allowed 
-    to basic to call assembler subroutines (example: 10 sys{main}). The machine language 
-    code is put after the basic code and it's hidden to LIST command. 
+Allows to enter basic programs directly from the assembler source.
 
-    Quoted string text can contain "{codes}" for special characters, in
-    the format "{shift key}" or "{cbm k}" (substitute "k" with actual key).
+The machine language code is put after the basic code and it's hidden to LIST command. 
 
-    The following special codes are also supported:
-     
-    {pi} {left arrow} {run stop} {return} 
+Enclosing an assembler symbol (e.g. a label) in "{}" causes the corresponding 
+4-digit decimal number to be entered in the basic text as tokens. It is thus allowed 
+to basic to call assembler subroutines. 
 
-    {up} {down} {left} {right} {clr} {home} {inst} {del} {rvs on} {rvs off}
+Quoted string text can contain "{codes}" for special characters, in
+the format "{shift key}" or "{cbm k}" (substitute "k" with actual key).
 
-    {blk} {wht} {cyn} {red} {pur} {grn} {blu} {yel}  
+The following special codes are also supported:
+```
+{pi} {left arrow} {run stop} {return} 
 
-    {rev a} {rev b} {rev d}  {rev f} {rev g} {rev h} {rev i}
-    {rev j} {rev k} {rev l}  {rev n} {rev o} {rev p} {rev u} 
-    {rev v} {rev w}  {rev x} {rev y} {rev z} {rev [} 
- 
-    {rev shift *} {rev shift a} {rev shift b} {rev shift c} {rev shift d}
-    {rev shift m} {rev shift n} {rev shift o} {rev shift u} {rev shift v}
-    {rev shift w} {rev shift x} {rev shift y} {rev shift z} {rev shift +}
+{up} {down} {left} {right} {clr} {home} {inst} {del} {rvs on} {rvs off}
 
-    {f1} to {f8}
+{blk} {wht} {cyn} {red} {pur} {grn} {blu} {yel}  
 
-    {160} {224}
+{rev a} {rev b} {rev d}  {rev f} {rev g} {rev h} {rev i}
+{rev j} {rev k} {rev l}  {rev n} {rev o} {rev p} {rev u} 
+{rev v} {rev w}  {rev x} {rev y} {rev z} {rev [} 
 
+{rev shift *} {rev shift a} {rev shift b} {rev shift c} {rev shift d}
+{rev shift m} {rev shift n} {rev shift o} {rev shift u} {rev shift v}
+{rev shift w} {rev shift x} {rev shift y} {rev shift z} {rev shift +}
+
+{f1} to {f8}
+
+{160} {224}
+```
+
+Example:
+```
+basic start
+   10 print "hello world"
+   20 sys {main}
+basic end
+
+main:   
+   RTS
+```
 
 REDEFINED DASM KEYWORDS
 =======================
 
-    Since IF,ELSE,ENDIF have a new meaning in AsmProc, the corresponding DASM 
-    keywords are accessible with the "#" prefix:
+Since IF,ELSE,ENDIF have a new meaning in AsmProc, the corresponding DASM 
+keywords are accessible with the "#" prefix:
+```
+#if      translates into  IF
+#else    translates into  ELSE
+#endif   translates into  ENDIF
+```
 
-    #if      translates into  IF
-    #else    translates into  ELSE
-    #endif   translates into  ENDIF
+The following two keywords are also available for convenience:
+```
+#ifdef   translates into  IFCONST
+#ifndef  translates into  IFNCONST
+```
 
-    The following two keywords are also available for convenience:
+also, #IFDEF/#IFNDEF have a single-line syntax:
+```
+#ifdef  <symbol> then <statement>
+#ifndef <symbol> then <statement>
+```
 
-    #ifdef   translates into  IFCONST
-    #ifndef  translates into  IFNCONST
-    
-    also, #IFDEF/#IFNDEF have a single-line syntax:
-    
-    #ifdef  <symbol> then <statement>
-    #ifndef <symbol> then <statement>
-    
+LICENSE
+=======
+
+Asmproc was written in 2006 (C) 2006-2007 by Antonino Porcino 
+(Nippur72) and is MIT licensed. 
 
 
-TO DO
-=====
+CHANGELOG
+=========
 
-- loop forever
-- : and ; in quotes
-- dim
-- // comment
-- float
-- float expr compiler
-- line numbers
-- else if
-- then statement con endif automatico
-- (...) in sub
-- inline sub / call sub
-- inline sub / call
-- controllare operatori signed <,>,
-- condizioni a<>#0 ==> if zero
+v0.0.1, 03-feb-2019: JavaScript port and Github/NPM publish.
+
+v0: from 2006 to 2019 Asmproc was an internal tool I used only 
+for my personal projects. It was written in C++ for Windows (Borland Compiler). 
+In 2019 I converted it to JavaScript and released as an open source (MIT license).
 
