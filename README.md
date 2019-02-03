@@ -1,70 +1,62 @@
-ASMPROC
-=======
+# asmproc
 
-Asmproc is high-level Assembly language for the 6502 processor that
+`asmproc` is high-level Assembly language for the 6502 processor that
 extends the 6502 assembly language with structured programming, typical of
 high level languages like C, Pascal and Basic.
 
 It's a super-set of the normal 6502 assembly, but you can think of it
 as a language of its own. 
 
-
-THE COMPILER
-============
-
-Asmproc does not directly produce executables; its output is instead
-an .asm file that can be assembled with an external assembler (currently 
-only DASM is supported). This because ASMPROC was born as a preprocess
-for .asm files.
-
-INSTALLATION
-============
+## INSTALLATION
 
 From the command prompt:
 ```
-npm i -g asmproc
+npm i -g `asmproc`
 ```
 
-USAGE
-=====
+## USAGE
 
-From the command propt:
+`asmproc` does not directly produce executables; its output is instead
+an .asm file that can be assembled with an external assembler (currently 
+only DASM is supported). This because `asmproc` was born as a preprocess
+for `.asm` files.
+
+From the command prompt:
 ```
 asmproc -i <inputfile> -o <destfile>
 ```
 
-- <inputfile> is the source file written according 
-to the Asmproc syntax
+- `inputfile` is the source file written according 
+to the `asmproc` syntax
 
-- <destfile> is the destination file that is going 
+- `destfile` is the destination file that is going 
 to be compiled with DASM.
 
-Both <inputfile> and <destfile> are plain text files.
+Both `inputfile` and `destfile` are plain text files.
 
-If Asmproc fails to compile due to an error in the source file
+If `asmproc` fails to compile due to an error in the source file
 the `%ERRORLEVEL%` shell variable is set to `-1` so that 
 the compiling script can be stopped. So `%ERRORLEVEL%` is 0 if
-Asmproc has worked correctly.
+`asmproc` has worked correctly.
 
-LANGUAGE QUICK REFERENCE
-========================
+# LANGUAGE QUICK REFERENCE
 
-COMMENTS
-========
+## COMMENTS
 
-C-style comments /* */, not nested, are permitted. 
+C-style comments `/* */`, not nested, are permitted. 
 
-CASE SENSITIVITY
-================
+## CASE SENSITIVITY
 
-Asmproc is not case sensitive. All is converted uppercase.
+`asmproc` is not case sensitive. All is converted uppercase.
 
-STATEMENT SEPARATION
-====================
-    
-Statements can be separed onto a single line by `":"`. Space character
-is neede before and after the semicolon (`" : "`). Placing a semicolon
-in a "if-then" statement on a single line may cause confusion as 
+## STATEMENT SEPARATION
+ 
+Statements can be separed onto a single line by a semicolon (` : `). 
+
+Note that space character is needed before and after the semicolon (` : `) to 
+allow differentiation from labels.  
+
+Placing a semicolon in a "if-then" statement on a single line may cause confusion as 
 the statement after the semicolon is not considered part of the "if-then"
 branch, but a statement of its own. 
 
@@ -73,8 +65,7 @@ Example:
 INX : INX : STX $FF
 ```
 
-IF-THEN 
-=======
+## IF-THEN 
 
 On multiple lines:
 ```
@@ -102,8 +93,7 @@ Example:
 if carry then LDA $FF
 ```
 
-REPEAT-UNTIL
-============
+## REPEAT-UNTIL
 
 Repeat a block until a condition is met.
 ```
@@ -120,8 +110,7 @@ repeat
 until x<#20   
 ```
 
-DO-LOOP
-=======
+## DO-LOOP
 
 Executes a loop while a condition is met. 
 
@@ -144,8 +133,7 @@ do
 loop until x<#20   
 ```
 
-WHILE-WEND
-==========
+## WHILE-WEND
 
 Executes a loop while a condition is met. 
 ```
@@ -162,8 +150,7 @@ while x<#20
 wend
 ```
 
-FOR-NEXT
-========
+## FOR-NEXT
 
 Executes a FOR loop.
 ```
@@ -173,10 +160,10 @@ for <register>=<start> to <end> [step <step>]
 next
 ```
 
-- <register> can be A,X,Y or a memory location.
-- <start> can be a costant or memory location.
-- <end> is a fixed constant
-- <step> constant from #-4 to #4 (because internally it's translated with INCs and DECs).
+- `<register>` can be `A`,`X`,`Y` or a memory location.
+- `<start>` can be a costant or memory location.
+- `<end>` is a fixed constant
+- `<step>` constant from `#-4` to `#4` (because internally it's translated with `INC`s and `DEC`s).
 
 When using a memory location the value in A register is lost because it's used in
 the loop initialization/compare. 
@@ -188,12 +175,12 @@ FOR X=#1 TO #20
 NEXT
 ```
         
-EXPRESSING CONDITIONS
-=====================
+## EXPRESSING CONDITIONS
 
-All <conditions> expressed in control and looping statements can be one of these:
+All `<conditions>` expressed in control and looping statements can be one of these:
 
 Flags:
+```
    Z=1, ZERO, EQUAL  
    Z=0, NOT ZERO, NOT EQUAL
    C=1, CARRY
@@ -202,26 +189,29 @@ Flags:
    N=0, NOT NEGATIVE
    V=1, OVERFLOW
    V=0, NOT OVERFLOW
-
+```
 Registers:
+```
    A <operator> <value>
    X <operator> <value>
    Y <operator> <value>
-
+```
 Memory:
+```
    <memory> <operator> <value>
    <memory> IS [NOT] ZERO
    <memory> IS [NOT] NEGATIVE
+```
 
-<operator> can be: <, >, <=, >=, <>, !=, ==, =,
+`<operator>` can be: `<`, `>`, `<=`, `>=`, `<>`, `!=`, `==`, `=`,
 
-<memory> specifies a memory location and the needed compare
+`<memory>` specifies a memory location and the needed compare
 operation is done via the accumulator unless specified
-with one of predicates "(using x)" or "(using y)". 
+with one of predicates `(using x)` or `(using y)`. 
 
-The "IS" syntax allows to avoid a CMP istruction.
+The `IS` syntax allows to avoid a CMP istruction.
 
-Compare operation is always unsigned unless the predicate "(signed)" is specified.     
+Compare operation is always unsigned unless the predicate `(signed)` is specified.     
 
 Examples:
 
@@ -234,15 +224,14 @@ if A>#15 then rts       ; return if A is > 15
 if (signed) X < #-5     ; return if X is less than -5, with X meant as a signed value
 ```
  
-SUBROUTINE DEFINITION
-=====================
+## SUBROUTINES
 
 Subroutines
 ```
-    sub <Name>[()]
-        <block>
-        [exit sub]
-    end sub         /* rts is added automatically*/
+sub <Name>[()]
+   <block>
+   [exit sub]
+end sub         /* rts is added automatically*/
 ```
 
 Example
@@ -254,8 +243,7 @@ SUB mysub()
 END SUB
 ```
 
-BITMAP CHARACTER COSTANTS
-=========================
+## BITMAP CHARACTER COSTANTS
 
 Define bitmap values, e.g. for sprite or character redefinition.
 
@@ -263,15 +251,19 @@ Define bitmap values, e.g. for sprite or character redefinition.
 bitmap <code>
 ```
 
-For single-color <code> is 8-character 
+For single-color `<code>` is 8-character wide
+```
 - "." or "-" or "0" equals to bit 0
-- Any other character equals to bit 1
+- any other character equals to bit 1
+```
 
-For multicolor <code> is 4-character
+For multicolor `<code>` is 4-character wide
+```
 - "." or "-" or "0" equals to bits 00  background color
 - "A" or "1"        equals to bits 01  border color
 - "B" or "2"        equals to bits 10  foreground color
 - "F" or "3"        equals to bits 11  auxiliary color (36878's high nibble)
+```
 
 Example: 
 ```
@@ -285,8 +277,7 @@ Example:
   bitmap  ........
 ```
 
-FLOATING POINT COSTANTS
-=======================
+## FLOATING POINT COSTANTS
 
 Defines a floating point costant in CBM format (5 bytes).
 
@@ -299,8 +290,7 @@ Example:
 PI: float 3.14
 ```
     
-MACRO DEFINITION
-================
+## MACROS
 
 ```
 macro <macroname> <parameter>,<parameter>,...
@@ -308,12 +298,15 @@ macro <macroname> <parameter>,<parameter>,...
 end macro
 ```
 
-<parameter> can be:
+`<parameter>` can be:
 
-- const - meaning a costant value (6502's immediate mode '#')
-- mem - meaning a memory location (6502's absolute or zero page mode)
-- indirect - pointer deference (6502's indirect mode, enclosed in ())
-- "quoted value" - any literal value.
+- `const` - meaning a costant value (6502's immediate mode '#')
+- `mem` - meaning a memory location (6502's absolute or zero page mode)
+- `indirect` - pointer deference (6502's indirect mode, enclosed in ())
+- `"quoted value"` - any literal value enclosed in quotes
+
+When defining the body of the macro parameters can be referenced
+with `{1}`, `{2}`, ...
 
 Macros are polymorhpic, that is, more macros with the same name 
 but with different parameter specification can be defined.
@@ -336,8 +329,7 @@ end macro
 ldx ($ff), a
 ```
 
-INLINE BASIC
-============
+## INLINE BASIC
 
 ```
 basic start [compact]
@@ -345,16 +337,16 @@ basic start [compact]
 basic end   
 ```
 
-Allows to enter basic programs directly from the assembler source.
+Allows to enter BASIC programs directly from the assembler source.
 
-The machine language code is put after the basic code and it's hidden to LIST command. 
+If you put machine language code after the basic code, it will be hidden to LIST command. 
 
-Enclosing an assembler symbol (e.g. a label) in "{}" causes the corresponding 
+Enclosing an assembler symbol (e.g. a label) in `"{}"` causes the corresponding 
 4-digit decimal number to be entered in the basic text as tokens. It is thus allowed 
 to basic to call assembler subroutines. 
 
-Quoted string text can contain "{codes}" for special characters, in
-the format "{shift key}" or "{cbm k}" (substitute "k" with actual key).
+Quoted string text can contain `{codes}` for special characters, in
+the format `{shift k}` or `{cbm k}` (substitute "k" with the actual key).
 
 The following special codes are also supported:
 ```
@@ -380,7 +372,7 @@ The following special codes are also supported:
 Example:
 ```
 basic start
-   10 print "hello world"
+   10 print "{clr}hello world"
    20 sys {main}
 basic end
 
@@ -388,11 +380,10 @@ main:
    RTS
 ```
 
-REDEFINED DASM KEYWORDS
-=======================
+## REDEFINED DASM KEYWORDS
 
-Since IF,ELSE,ENDIF have a new meaning in AsmProc, the corresponding DASM 
-keywords are accessible with the "#" prefix:
+Because `IF`, `ELSE`, `ENDIF` have a new meaning in `asmproc`, the corresponding DASM 
+keywords are accessible with the `#` prefix:
 ```
 #if      translates into  IF
 #else    translates into  ELSE
@@ -405,25 +396,23 @@ The following two keywords are also available for convenience:
 #ifndef  translates into  IFNCONST
 ```
 
-also, #IFDEF/#IFNDEF have a single-line syntax:
+also, `#IFDEF`/`#IFNDEF` have a single-line syntax:
 ```
 #ifdef  <symbol> then <statement>
 #ifndef <symbol> then <statement>
 ```
 
-LICENSE
-=======
+## LICENSE
 
-Asmproc was written in 2006 (C) 2006-2007 by Antonino Porcino 
+`asmproc` was written in 2006 (C) 2006-2007 by Antonino Porcino 
 (Nippur72) and is MIT licensed. 
 
 
-CHANGELOG
-=========
+## CHANGELOG
 
-v0.0.1, 03-feb-2019: JavaScript port and Github/NPM publish.
+- v0.0.1, 03-feb-2019: JavaScript port and Github/NPM publish.
 
-v0: from 2006 to 2019 Asmproc was an internal tool I used only 
+- v0: from 2006 to 2019 `asmproc` was an internal tool I used only 
 for my personal projects. It was written in C++ for Windows (Borland Compiler). 
 In 2019 I converted it to JavaScript and released as an open source (MIT license).
 
