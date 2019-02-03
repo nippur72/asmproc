@@ -195,7 +195,7 @@ function main() {
     L.LoadFromFile(FName);
     ProcessFile();
     L.SaveToFile(FOut);
-    console.log("Asmproc done.");
+    console.log("asmproc OK, created: \"" + FOut + "\"");
     process.exit(0);
 }
 function RemoveComments() {
@@ -1762,7 +1762,7 @@ function TranslateBasic(Linea) {
             for (var t = 1; t <= 255; t++) {
                 var l = Ascii[t].Length();
                 if (l > 0 && Linea.SubString(1, l) == UpperCase(Ascii[t])) {
-                    console.log("matched string text: " + Ascii[t]);
+                    // console.log(`matched string text: ${Ascii[t]}`);
                     Linea = Linea.SubString(l + 1, Linea.Length());
                     Compr = Compr + (t + ",");
                     if (t == 34)
@@ -1782,7 +1782,7 @@ function TranslateBasic(Linea) {
             for (var t = 1; t <= 255; t++) {
                 var l = Ascii[t].Length();
                 if (l > 0 && Linea.SubString(1, l) == UpperCase(Ascii[t])) {
-                    console.log("matched REM text: " + Ascii[t]);
+                    // console.log(`matched REM text: ${Ascii[t]}`);
                     Linea = Linea.SubString(l + 1, Linea.Length());
                     Compr = Compr + (t + ",");
                     break_next_token = true;

@@ -279,7 +279,7 @@ function main()
 
    L.SaveToFile(FOut);
 
-   console.log("Asmproc done.");
+   console.log(`asmproc OK, created: "${FOut}"`);
    process.exit(0);
 }
 
@@ -1923,7 +1923,7 @@ function TranslateBasic(Linea: string): string
             let l = Ascii[t].Length();
             if(l>0 && Linea.SubString(1,l)==UpperCase(Ascii[t]))
             {
-               console.log(`matched string text: ${Ascii[t]}`);
+               // console.log(`matched string text: ${Ascii[t]}`);
                Linea = Linea.SubString(l+1,Linea.Length());
                Compr = Compr + `${t},`;
                if(t==34) inquote = false;
@@ -1947,7 +1947,7 @@ function TranslateBasic(Linea: string): string
             let l = Ascii[t].Length();
             if(l>0 && Linea.SubString(1,l)==UpperCase(Ascii[t]))
             {
-               console.log(`matched REM text: ${Ascii[t]}`);
+               // console.log(`matched REM text: ${Ascii[t]}`);
                Linea = Linea.SubString(l+1,Linea.Length());
                Compr = Compr + `${t},`;
                break_next_token = true;
