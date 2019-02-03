@@ -13,6 +13,7 @@
 // TODO float, output as comment
 // TODO change float into cbmfloat, output as comment
 // TODO basic compact by default // preserve
+// TODO remove ; comments
 
 /*
 TO DO
@@ -1327,16 +1328,30 @@ function ParseCond(W: string)
 
 function IsBitmap(Linea: string,  nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)));
+   const R = new RegExp(/^\s*bitmap\s+(.+)\s*$/igm);
+   const match = R.exec(Linea);
+   if(match === null) return undefined;
+
+   const [all, value] = match;
+
+
+   /*
+   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
       
-   let StringaBitmap = GetParm(Linea, " ", 0);
+   let G = GetToken(Linea, " "); Linea = G.Rest;
+   let StringaBitmap = G.Token;
 
    if(StringaBitmap!="BITMAP") return undefined;
 
-   let Argomento = Trim(GetParm(Linea, " ", 1));
+   G = GetToken(Linea," "); Linea = G.Rest;
+   let Argomento = Trim(G.Token);
+   */
+
+   let Argomento = Trim(value);
+
    if(Argomento.Length()!=4 && Argomento.Length()!=8)
    {
-      error("invalid BITMAP value");
+      error(`invalid BITMAP value: "${Argomento}" linea=${Linea}`);
       return undefined;
    }
 
@@ -1844,7 +1859,7 @@ function TranslateBasic(Linea: string): string
             let l = Tokens[t].Length();
             if(l>0 && Linea.SubString(1,l)==Tokens[t])
             {
-               console.log(`matched token: ${Tokens[t]}`);
+               // console.log(`matched token: ${Tokens[t]}`);
                Linea = Linea.SubString(l+1,Linea.Length());               
                Compr = Compr + `${t},`;
                if(t==143||t==131) inrem = true;
@@ -1860,7 +1875,7 @@ function TranslateBasic(Linea: string): string
             let l = Tokens[t].Length();
             if(l>0 && Linea.SubString(1,l)==Tokens[t])
             {
-               console.log(`matched text: ${Tokens[t]}`);
+               // console.log(`matched text: ${Tokens[t]}`);
                Linea = Linea.SubString(l+1,Linea.Length());
                if(!(BasicCompact==true && t==32))
                {

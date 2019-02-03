@@ -1280,13 +1280,25 @@ function ParseCond(W) {
     return { Eval: Eval, BranchNot: BranchNot, Branch: Branch };
 }
 function IsBitmap(Linea, nl) {
-    Linea = UpperCase(Trim(TruncateComment(Linea)));
-    var StringaBitmap = GetParm(Linea, " ", 0);
-    if (StringaBitmap != "BITMAP")
+    var R = new RegExp(/^\s*bitmap\s+(.+)\s*$/igm);
+    var match = R.exec(Linea);
+    if (match === null)
         return undefined;
-    var Argomento = Trim(GetParm(Linea, " ", 1));
+    var all = match[0], value = match[1];
+    /*
+    Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+       
+    let G = GetToken(Linea, " "); Linea = G.Rest;
+    let StringaBitmap = G.Token;
+ 
+    if(StringaBitmap!="BITMAP") return undefined;
+ 
+    G = GetToken(Linea," "); Linea = G.Rest;
+    let Argomento = Trim(G.Token);
+    */
+    var Argomento = Trim(value);
     if (Argomento.Length() != 4 && Argomento.Length() != 8) {
-        error("invalid BITMAP value");
+        error("invalid BITMAP value: \"" + Argomento + "\" linea=" + Linea);
         return undefined;
     }
     var byteval = 0;
@@ -1694,7 +1706,7 @@ function TranslateBasic(Linea) {
             for (var t = 128; t <= 255; t++) {
                 var l = Tokens[t].Length();
                 if (l > 0 && Linea.SubString(1, l) == Tokens[t]) {
-                    console.log("matched token: " + Tokens[t]);
+                    // console.log(`matched token: ${Tokens[t]}`);
                     Linea = Linea.SubString(l + 1, Linea.Length());
                     Compr = Compr + (t + ",");
                     if (t == 143 || t == 131)
@@ -1709,7 +1721,7 @@ function TranslateBasic(Linea) {
             for (var t = 32; t <= 95; t++) {
                 var l = Tokens[t].Length();
                 if (l > 0 && Linea.SubString(1, l) == Tokens[t]) {
-                    console.log("matched text: " + Tokens[t]);
+                    // console.log(`matched text: ${Tokens[t]}`);
                     Linea = Linea.SubString(l + 1, Linea.Length());
                     if (!(BasicCompact == true && t == 32)) {
                         Compr = Compr + (t + ",");
