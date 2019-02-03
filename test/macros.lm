@@ -1,0 +1,28 @@
+macro M1 mem
+   ; THIS IS MACRO mem
+end macro
+
+macro M1 const
+   ; THIS IS MACRO const
+end macro
+
+macro M1 indirect
+   ; THIS IS MACRO indirect
+end macro
+
+macro M1 "a"
+   ; THIS IS MACRO string
+end macro
+
+macro M1 "a", mem, const, indirect
+   ; THIS IS MACRO string
+end macro
+
+TEXT
+M1 $aaaa
+M1 #$aaaa
+M1 ($aaaa)
+M1 "a"
+M1 "a", 3, #12, ($22)
+TEXT
+

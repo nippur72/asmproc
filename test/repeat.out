@@ -1,0 +1,158 @@
+
+basic_row_0:  BYTE [basic_row_1%256],[basic_row_1/256],[10%256],[10/256],153,32,34,72,69,76,76,79,34,58,153,32,34,87,79,82,76,68,34,0
+
+basic_row_1:  BYTE [basic_row_2%256],[basic_row_2/256],[20%256],[20/256],137,32,49,48,0
+basic_row_2:  BYTE 0,0
+
+
+   byte 1
+   byte 2
+   byte 4
+   byte 8
+   byte 16
+   byte 32
+   byte 64
+   byte 128
+
+ byte $0x82,$0x48,$0xf5,$0xc2,$0x8f
+
+ byte $0x00,$0x00,$0x00,$0x00,$0x00
+
+ byte $0x81,$0x00,$0x00,$0x00,$0x00
+
+ IFCONST A
+   TEXT_IN_IFDEF
+ ENDIF
+
+
+IF_27_START:
+	BCC IF_27_ELSE
+   THEN_BRANCH
+IF_27_ELSE:
+IF_27_END:
+
+IF_31_START:
+	BCC IF_31_ELSE
+   THEN_BRANCH
+	jmp IF_31_END
+IF_31_ELSE:
+   ELSE_BRANCH
+IF_31_END:
+
+	BCS SOMELABEL
+
+IF_39_START:
+	BCC IF_39_ELSE
+ LDA $03 
+IF_39_ELSE:
+IF_39_END:
+ 
+
+IF_44_START:
+	BCC IF_44_ELSE
+ SOMELABEL 
+IF_44_ELSE:
+IF_44_END:
+ 
+
+; ===== SUB ... END SUB ====
+
+MYSUB:
+   TEXT
+	BCS SUB_45_END
+IF_54_START:
+	BCC IF_54_ELSE
+ RTS 
+IF_54_ELSE:
+IF_54_END:
+ 
+   TEXT
+   rts
+   TEXT
+SUB_45_END:
+   rts
+
+; ===== FOR ... NEXT ====
+
+FOR_56_START:
+	LDA #0
+FOR_56_LOOP:
+   TEXT
+	BCS FOR_56_END
+   JMP FOR_56_END
+		clc
+	adc #1
+	CMP #3+1
+	BCC FOR_56_LOOP
+
+FOR_56_END:
+
+FOR_62_START:
+	LDA #1
+	STA $03
+FOR_62_LOOP:
+   TEXT
+		inc $03
+	inc $03
+	LDA $03
+	CMP #4+2
+	BCC FOR_62_LOOP
+
+FOR_62_END:
+
+; =======================
+
+WHILE_68_START:
+	BCC WHILE_68_END
+   TEXT
+	BCS WHILE_68_END
+   JMP WHILE_68_END
+	JMP WHILE_68_START
+WHILE_68_END:
+
+TEXT
+REPEAT_75_START:
+   ISTR1
+   ISTR2
+	CMP #1
+	BEQ .+4	BCS REPEAT_75_END
+   JMP REPEAT_75_END
+	BNE REPEAT_75_START
+REPEAT_75_END:
+
+TEXT
+
+REPEAT_83_START:
+   TEXT
+REPEAT_85_START:
+      ISTR1      
+	CMP #1
+	BCC REPEAT_85_START
+REPEAT_85_END:
+
+   TEXT
+	BNE REPEAT_83_START
+REPEAT_83_END:
+
+
+
+DO_92_START:
+   TEXT
+	BCS DO_92_END
+   JMP DO_92_END
+	BCC DO_92_START
+DO_92_END:
+
+
+DO_98_START:
+   TEXT
+	BCS DO_98_START
+DO_98_END:
+
+
+DO_102_START:
+   TEXT
+	BCS DO_102_START
+DO_102_END:
+
+*/

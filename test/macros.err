@@ -1,0 +1,32 @@
+   mac M1_M
+   ; THIS IS MACRO MEM
+   endm
+
+   mac M1_C
+   ; THIS IS MACRO CONST
+   endm
+
+   mac M1_I
+   ; THIS IS MACRO INDIRECT
+   endm
+
+   mac M1__A
+   ; THIS IS MACRO STRING
+   endm
+
+MACRO M1 "A"
+   ; THIS IS MACRO STRING
+END MACRO
+
+MACRO M1 "A", MEM, CONST, INDIRECT
+   ; THIS IS MACRO STRING
+END MACRO
+
+TEXT
+M1 $AAAA
+M1 #$AAAA
+M1 ($AAAA)
+M1 "A"
+M1 "A", 3, #12, ($22)
+TEXT
+

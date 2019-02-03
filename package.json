@@ -1,0 +1,21 @@
+{
+  "name": "asmproc",
+  "version": "0.0.1",
+  "description": "",
+  "main": "asmproc.js",
+  "bin": {
+   "asmproc": "./asmproc.js"   
+  },  
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "Antonino Porcino <nino.porcino@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "command-line-args": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/command-line-args": "^5.0.0",
+    "@types/node": "^10.12.21"
+  }
+}

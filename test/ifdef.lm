@@ -1,0 +1,5 @@
+TEXT
+#ifdef DEBUG then DEBUG_IS_ON
+TEXT
+#ifndef DEBUG then DEBUG_IS_OFF
+TEXT

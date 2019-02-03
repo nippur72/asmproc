@@ -1,0 +1,3 @@
+TEXT
+include "test/include_1.lm"
+TEXT

@@ -1,0 +1,106 @@
+basic start
+   10 print "hello"
+      print "world"
+   20 goto 10
+basic end
+
+
+bitmap -------X
+bitmap ------X-
+bitmap -----X--
+bitmap ----X---
+bitmap ---X----
+bitmap --X-----
+bitmap -X------
+bitmap X-------
+
+float 3.14
+
+float 0
+
+float 1
+
+#IFDEF A
+   TEXT_IN_IFDEF
+#ENDIF
+
+
+IF carry THEN
+   THEN_BRANCH
+END IF
+
+IF carry THEN
+   THEN_BRANCH
+ELSE
+   ELSE_BRANCH
+END IF
+
+IF carry THEN GOTO somelabel
+
+IF carry THEN LDA $03
+
+IF carry THEN somelabel
+
+; ===== SUB ... END SUB ====
+
+SUB mysub()
+   text
+   if carry then exit sub
+   if carry then rts
+   text
+   exit sub
+   text
+END SUB
+
+; ===== FOR ... NEXT ====
+
+FOR A=#0 TO #3 STEP #1
+   TEXT
+   IF CARRY THEN EXIT FOR
+   EXIT FOR
+NEXT
+
+FOR $03=#1 TO #4 STEP #2
+   TEXT
+NEXT
+
+; =======================
+
+while carry
+   text
+   if carry then exit while
+   exit while
+wend
+
+TEXT
+repeat
+   istr1
+   istr2
+   if a>#1 then exit repeat
+   exit repeat
+until zero
+TEXT
+
+repeat
+   text
+   repeat 
+      istr1      
+   until A>=#1   
+   text
+until zero
+
+
+do
+   text
+   if carry then exit do
+   exit do
+loop until carry
+
+do
+   text
+loop while carry
+
+do
+   text
+loop while carry
+*/

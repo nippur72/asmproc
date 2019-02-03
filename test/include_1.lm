@@ -1,0 +1,3 @@
+FILE INCLUDE_1.LM
+include "test/include_2.lm"
+FILE INCLUDE_1.LM
