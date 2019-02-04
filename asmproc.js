@@ -217,19 +217,20 @@ function RemoveComments() {
         }
     }
     L.SetText(Whole);
-    // remove ; comments
-    var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+    // remove ; comments   
     for (var t = 0; t < L.Count; t++) {
+        var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
         var Linea = L.Strings[t];
         var match = R.exec(Linea);
         if (match !== null) {
             var all = match[0], purged = match[1], comment = match[2];
+            console.log(JSON.stringify({ Linea: Linea, purged: purged, comment: comment }));
             L.Strings[t] = purged;
         }
     }
-    // remove // comments
-    R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+    // remove // comments   
     for (var t = 0; t < L.Count; t++) {
+        var R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
         var Linea = L.Strings[t];
         var match = R.exec(Linea);
         if (match !== null) {

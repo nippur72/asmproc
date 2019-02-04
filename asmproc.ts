@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 // TODO self extracting macros
-// TODO // c-style comments, ' hypen comments
+// TODO ' hypen comments?
+// TODO "/*" comments when in quoted text
 // TODO JMP simulate BRA branch always
 // TODO self modifying code
 // TODO WHILE, LOOP, UNTIL check no condition
@@ -13,7 +14,6 @@
 // TODO float, output as comment
 // TODO change float into cbmfloat, output as comment
 // TODO basic compact by default // preserve
-// TODO remove ; comments
 
 /*
 TO DO
@@ -307,22 +307,23 @@ function RemoveComments()
     }
     L.SetText(Whole);
 
-   // remove ; comments
-   let R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+   // remove ; comments   
    for(let t=0; t<L.Count; t++) 
    {
-      const Linea = L.Strings[t];
+      const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+      const Linea = L.Strings[t];      
       const match = R.exec(Linea);
-      if(match !== null) {
+      if(match !== null) {         
          const [all, purged, comment] = match;
+         console.log(JSON.stringify({Linea, purged, comment}));
          L.Strings[t] = purged;     
       }
    }
    
-   // remove // comments
-   R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+   // remove // comments   
    for(let t=0; t<L.Count; t++) 
    {
+      const R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
       const Linea = L.Strings[t];
       const match = R.exec(Linea);
       if(match !== null) {
