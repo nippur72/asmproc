@@ -19,6 +19,8 @@
 // TODO Z80 FOR
 // TODO Z80 Macro
 // TODO Z80 Condition
+// TODO macro fix literal value call
+// TODO bitmap for c64 sprites
 
 /*
 TO DO
