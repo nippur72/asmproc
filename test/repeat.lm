@@ -1,3 +1,6 @@
+TEXT "hello ; hello" ; COMMENT
+TEXT "hello // hello" // COMMENT
+
 TEXT ; COMMENT
 TEXT // COMMENT
 

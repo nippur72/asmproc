@@ -218,7 +218,7 @@ function RemoveComments() {
     }
     L.SetText(Whole);
     // remove ; comments
-    var R = new RegExp(/^(.*);(.*)$/gmi);
+    var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
     for (var t = 0; t < L.Count; t++) {
         var Linea = L.Strings[t];
         var match = R.exec(Linea);
@@ -228,7 +228,7 @@ function RemoveComments() {
         }
     }
     // remove // comments
-    R = new RegExp(/^(.*)\/\/(.*)$/gmi);
+    R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
     for (var t = 0; t < L.Count; t++) {
         var Linea = L.Strings[t];
         var match = R.exec(Linea);
