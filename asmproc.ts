@@ -314,8 +314,7 @@ function RemoveComments()
       const Linea = L.Strings[t];      
       const match = R.exec(Linea);
       if(match !== null) {         
-         const [all, purged, comment] = match;
-         console.log(JSON.stringify({Linea, purged, comment}));
+         const [all, purged, comment] = match;         
          L.Strings[t] = purged;     
       }
    }

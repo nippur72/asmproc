@@ -11,7 +11,7 @@ as a language of its own.
 
 From the command prompt:
 ```
-npm i -g `asmproc`
+npm i -g asmproc
 ```
 
 ## USAGE
