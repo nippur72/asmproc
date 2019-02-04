@@ -43,7 +43,7 @@ the compiling script can be stopped. So `%ERRORLEVEL%` is 0 if
 
 ## COMMENTS
 
-C-style comments `/* */`, not nested, are permitted. 
+C-style comments `//` and `/* */` (not nested) are permitted. 
 
 ## CASE SENSITIVITY
 
