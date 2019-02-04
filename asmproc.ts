@@ -14,15 +14,19 @@
 // TODO float, output as comment
 // TODO change float into cbmfloat, output as comment
 // TODO basic compact by default // preserve
+// TODO first char space in DASM?
+// TODO Z80 if then ret / return
+// TODO Z80 FOR
+// TODO Z80 Macro
+// TODO Z80 Condition
 
 /*
 TO DO
 =====
 
 - loop forever
-- : and ; in quotes
+- : in quotes
 - dim
-- // comment
 - float
 - float expr compiler
 - line numbers
@@ -33,6 +37,32 @@ TO DO
 - inline sub / call
 - controllare operatori signed <,>,
 - condizioni a<>#0 ==> if zero
+*/
+
+/*
+DASM VS Z80ASM
+
+same:
+   include
+   IF ELSE ENDIF IFDEF IFNDEF
+
+different
+   byte    defb
+   word    defw
+           defl
+           defm
+           defs
+           define
+           defs size, fill 
+
+flags 
+
+6502        Z80
+===========================
+C           C    carry   
+V           V    overflow
+N           S    negative / sign
+Z           Z    zero
 
 */
 
@@ -195,11 +225,7 @@ let StackWhile: TStack;
 let StackFor: TStack;
 let StackSub: TStack;
 let StackIf_U = new TStringList();
-let StackRepeat_U = new TStringList();
-let StackDo_U = new TStringList();
-let StackWhile_U = new TStringList();
 let StackFor_U = new TStringList();
-let StackSub_U = new TStringList();
 
 let AllMacros: Macro[] = [];
 
@@ -210,6 +236,14 @@ let Tokens: string[] = []; // 256
 let Ascii:  string[] = []; // 256
 
 let Ferr: string;
+
+let dasm    = false;
+let z80asm  = false;
+let cpu6502 = false;
+let cpuz80  = false;
+
+let JMP: string;
+let BYTE: string;
 
 function error(msg: string, cline?: number)
 {
@@ -228,16 +262,35 @@ function main()
 {
    const options = parseOptions([
       { name: 'input',      alias: 'i', type: String },
-      { name: 'output',     alias: 'o', type: String },   
-   ]);
+      { name: 'output',     alias: 'o', type: String }, 
+      { name: 'target',     alias: 't', type: String,  defaultValue: 'dasm' }  
+   ]);   
 
    if(options === undefined || options.input === undefined || options.output === undefined) 
    {
       console.log("Usage: asmproc -i <inputfile> -o <outputfile>");
       process.exit(-1);
       return;
+   }   
+
+   // set target
+   dasm = options.target === "dasm";
+   z80asm = options.target === "z80asm";
+   cpu6502 = dasm;
+   cpuz80 = z80asm;   
+
+   if(cpu6502) 
+   {
+      JMP = "JMP";
+      BYTE = "byte";
    }
-       
+
+   if(cpuz80) 
+   {
+      JMP = "JP ";
+      BYTE = "defb";
+   }
+
    L = new TStringList();
 
    let FName = options.input;
@@ -263,11 +316,7 @@ function main()
    StackSub = new TStack();
 
    StackIf_U = new TStringList();
-   StackRepeat_U = new TStringList();
-   StackDo_U = new TStringList();
-   StackWhile_U = new TStringList();
    StackFor_U = new TStringList();
-   StackSub_U = new TStringList();
 
    basic_row = 0;
    BasicCompact = false;
@@ -336,7 +385,7 @@ function ResolveInclude(): boolean
 {
     for(let t=0; t<L.Count; t++)
     {
-        let Linea = UpperCase(Trim(TruncateComment(L.Strings[t])))+" ";
+        let Linea = UpperCase(Trim(L.Strings[t]))+" ";
         
         let Include = GetParm(Linea, " ", 0);
                 
@@ -378,9 +427,9 @@ function MakeAllUpperCase()
 }
 
 // spezza su piu linee #IFDEF / #IFNDEF su singola linea 
-function IsDASMIFTHEN(Linea: string, nl: number): string | undefined
+function IsIFDEFSingle(Linea: string, nl: number): string | undefined
 {   
-   const pattern = "_ #ifdef|#ifndef _ {cond} _ then {statement}";
+   // "_ #ifdef|#ifndef _ {cond} _ then {statement}";
    const R = new RegExp(/\s*(#ifdef|#ifndef)\s+(.*)\s+then\s+(.*)/i);
    const match = R.exec(Linea);
 
@@ -388,42 +437,27 @@ function IsDASMIFTHEN(Linea: string, nl: number): string | undefined
 
    const [ all, ifdef, cond, statement ] = match;
    return `${ifdef} ${cond}§   ${statement}§#ENDIF`;
+}
 
-   /*
+// change assembler reserved keywords
+function IsReservedKeywords(Linea: string, nl: number): string|undefined
+{
    Linea = Trim(Linea);
    if(Linea.startsWith("#"))
    {
-      if(Linea.AnsiPos("#IFDEF")>0 || Linea.AnsiPos("#IFNDEF")>0)
+      if(dasm || z80asm) 
       {
-         // verifica esistenza di then
-         let th = Linea.AnsiPos("THEN ");
-         if(th>0)
-         {
-            Linea = Linea.SubString(1,th-1)+"§"+Linea.SubString(th+4,Linea.Length())+"§ #ENDIF";
-         }
+         Linea = Linea.replace("#IFDEF","IFCONST");
+         Linea = Linea.replace("#IFNDEF","IFNCONST");
+         Linea = Linea.replace("#IF","IF");
+         Linea = Linea.replace("#ELSE","ELSE");
+         Linea = Linea.replace("#ENDIF","ENDIF");
+         //Linea = Linea.replace("#INCLUDE","INCLUDE");
+         let ReplaceTo = " " + Linea;
+         return ReplaceTo;
       }
-      let ReplaceTo = " "+Linea;
-      return ReplaceTo;
-   }
+   }   
    return undefined;
-   */
-}
-
-function IsDASMKeywords(Linea: string, nl: number): string|undefined
-{
-    Linea = Trim(Linea);
-    if(Linea.startsWith("#"))
-    {
-      Linea = Linea.replace("#IFDEF","IFCONST");
-      Linea = Linea.replace("#IFNDEF","IFNCONST");
-      Linea = Linea.replace("#IF","IF");
-      Linea = Linea.replace("#ELSE","ELSE");
-      Linea = Linea.replace("#ENDIF","ENDIF");
-      //Linea = Linea.replace("#INCLUDE","INCLUDE");
-      let ReplaceTo = " " + Linea;
-      return ReplaceTo;
-    }
-    return undefined;
 }
 
 function ProcessFile()
@@ -445,7 +479,7 @@ function ProcessFile()
    for(t=0; t<L.Count; t++)
    {
    	let Dummy = L.Strings[t];
-      let ReplaceTo = IsDASMIFTHEN(Dummy, t);
+      let ReplaceTo = IsIFDEFSingle(Dummy, t);
 
       if(ReplaceTo !== undefined)
     	{
@@ -603,7 +637,7 @@ function ProcessFile()
    for(t=0;t<L.Count;t++)
    {
     	let Dummy = L.Strings[t];
-    	let ReplaceTo = IsDASMKeywords(Dummy, t);
+    	let ReplaceTo = IsReservedKeywords(Dummy, t);
 
       if(ReplaceTo !== undefined) 
     	{
@@ -649,31 +683,9 @@ function Label(Header: string, nr: number, suffix: string)
    return `${Header}_${nr}_${suffix}`;
 }
 
-/*
-void ReplaceString(AnsiString &Work,AnsiString Source, AnsiString ReplaceTo)
-{
-   int x;
-   while(x=Work.AnsiPos(Source))
-   {
-      AnsiString LeftString  = Work.SubString(1,x-1);
-      AnsiString RightString = Work.SubString(x+Source.Length(),Work.Length());
-      Work = LeftString+ReplaceTo+RightString;
-   }
-}
-*/
-
-function TruncateComment(Linea: string): string
-{
-   if(Linea.AnsiPos(";"))
-   {
-      return GetParm(Linea, ";", 0);
-   }
-   else return Linea;
-}
-
 function IsIFSINGLE(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaIF;
    let StringaCond;
@@ -699,13 +711,13 @@ function IsIFSINGLE(Linea: string, nl: number): string | undefined
 
    // if <cond> then <statement>
 
-   let ReplaceTo = " IF "+StringaCond+" THEN § "+LastPart+" § END IF§ ";
+   let ReplaceTo = ` IF ${StringaCond} THEN § ${LastPart} § END IF§ `;
    return ReplaceTo;
 }
 
 function IsIF(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaIF;
    let StringaCond;
@@ -757,7 +769,7 @@ function IsIF(Linea: string, nl: number): string | undefined
 
 function IsENDIF(Linea: string,  nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let G = GetToken(Linea," "); Linea = G.Rest;
    let StringaENDIF = G.Token;
@@ -781,7 +793,7 @@ function IsENDIF(Linea: string,  nl: number): string | undefined
 
 function IsELSE(Linea: string, n: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let G = GetToken(Linea," "); Linea = G.Rest;
    let StringaELSE = G.Token;   
@@ -794,13 +806,13 @@ function IsELSE(Linea: string, n: number): string | undefined
    }
    let nl = StackIf.Last();
 
-   let ReplaceTo = "\tjmp "+Label("IF",nl,"END")+"§"+Label("IF",nl,"ELSE")+":";
+   let ReplaceTo = "\t"+JMP+" "+Label("IF",nl,"END")+"§"+Label("IF",nl,"ELSE")+":";
    return ReplaceTo;
 }
 
 function IsREPEAT(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaREPEAT = GetParm(Linea, " ", 0);
 
@@ -834,14 +846,14 @@ function IsEXITREPEAT(Linea: string, nl: number): string | undefined
       let n = StackRepeat.Last();      
       let label = Label("REPEAT", n, "END");
       const [all, spaces, exit_repeat] = match;
-      let ReplaceTo = `${spaces}JMP ${label}`;
+      let ReplaceTo = `${spaces}${JMP} ${label}`;
       return ReplaceTo;
    }
 }
 
 function IsUNTIL(Linea: string, n: number): string | undefined
 {
-   Linea = Trim(TruncateComment(Linea));
+   Linea = Trim(Linea);
 
    let G = GetToken(Linea," "); Linea = G.Rest;
    let StringaUNTIL= G.Token;
@@ -872,7 +884,7 @@ function IsUNTIL(Linea: string, n: number): string | undefined
 
 function IsDO(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaDO = GetParm(Linea," ",0);
 
@@ -906,7 +918,7 @@ function IsEXITDO(Linea: string, nl: number): string | undefined
       let n = StackDo.Last();      
       let label = Label("DO", n, "END");
       const [all, spaces, exit_do] = match;
-      let ReplaceTo = `${spaces}JMP ${label}`;
+      let ReplaceTo = `${spaces}${JMP} ${label}`;
       return ReplaceTo;
    }
 }
@@ -947,7 +959,7 @@ function IsLOOP(Linea: string, n: number): string | undefined
 
 function IsWHILE(Linea: string,  nl: number): string | undefined
 {   
-   Linea = Trim(TruncateComment(Linea));
+   Linea = Trim(Linea);
 
    let StringaWHILE;
    let StringaCond;
@@ -996,14 +1008,14 @@ function IsEXITWHILE(Linea: string, nl: number): string | undefined
       let n = StackWhile.Last();      
       let label = Label("WHILE", n, "END");
       const [all, spaces, exit_while] = match;
-      let ReplaceTo = `${spaces}JMP ${label}`;
+      let ReplaceTo = `${spaces}${JMP} ${label}`;
       return ReplaceTo;
    }
 }
 
 function IsWEND(Linea: string, n: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaWEND = GetParm(Linea," ",0);
 
@@ -1013,14 +1025,14 @@ function IsWEND(Linea: string, n: number): string | undefined
 
    let nl = StackWhile.Pop();;
 
-   let ReplaceTo = "\tJMP "+Label("WHILE",nl,"START")+"§"+Label("WHILE",nl,"END")+":";
+   let ReplaceTo = "\t"+JMP+" "+Label("WHILE",nl,"START")+"§"+Label("WHILE",nl,"END")+":";
    
    return ReplaceTo;
 }
 
 function IsFOR(Linea: string,  nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)));
+   Linea = UpperCase(Trim(Linea));
 
    let StringaFOR: string;
    let StringaStart: string;
@@ -1164,14 +1176,14 @@ function IsEXITFOR(Linea: string, nl: number): string | undefined
       let n = StackFor.Last();      
       let label = Label("FOR", n, "END");
       const [all, spaces, exit_for] = match;
-      let ReplaceTo = `${spaces}JMP ${label}`;
+      let ReplaceTo = `${spaces}${JMP} ${label}`;
       return ReplaceTo;
    }
 }
 
 function IsNEXT(Linea: string, n: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaNEXT = GetParm(Linea, " ", 0);
 
@@ -1232,57 +1244,56 @@ function ParseCond(W: string)
 
    if(W=="Z=1" || W=="ZERO" || W=="EQUAL")
 	{
-		Eval = "";
-		Branch = "BEQ *";
-		BranchNot = "BNE *";
+      Eval = "";      
+		Branch    = cpu6502 ? "BEQ *" : "JR Z, *";
+		BranchNot = cpu6502 ? "BNE *" : "JR NZ, *";
 	}
 	else if(W=="Z=0" || W=="NOT ZERO" || W=="NOT EQUAL")
 	{
 		Eval = "";
-		Branch = "BNE *";
-		BranchNot = "BEQ *";
+		Branch    = cpu6502 ? "BNE *" : "JR NZ, *";
+		BranchNot = cpu6502 ? "BEQ *" : "JR Z, *";
 	}
 	else if(W=="C=1" || W=="CARRY")
 	{
 		Eval = "";
-		Branch = "BCS *";
-		BranchNot = "BCC *";
+		Branch    = cpu6502 ? "BCS *" : "JR C, *";
+		BranchNot = cpu6502 ? "BCC *" : "JR NC, *";
 	}
 	else if(W=="C=0" || W=="NOT CARRY")
 	{
 		Eval = "";
-		Branch = "BCC *";
-		BranchNot = "BCS *";
+		Branch    = cpu6502 ? "BCC *" : "JR NC, *";
+		BranchNot = cpu6502 ? "BCS *" : "JR C, *";
 	}
-	else if(W=="NEGATIVE" || W=="N=1")
+	else if(W=="NEGATIVE" || W=="SIGN" || (cpu6502 && W=="N=1") || (cpuz80 && W=="S=1")) 
 	{
 		Eval = "";
-		Branch = "BMI *";
-		BranchNot = "BPL *";
+		Branch    = cpu6502 ? "BMI *" : "JP S, *";
+		BranchNot = cpu6502 ? "BPL *" : "JP NS, *";
 	}
-	else if(W=="NOT NEGATIVE" || W=="N=0")
+	else if(W=="NOT NEGATIVE" || W=="NOT SIGN" || (cpu6502 && W=="N=0") || (cpuz80 && W=="S=0")) 
 	{
 		Eval = "";
-		Branch = "BPL *";
-		BranchNot = "BMI *";
+		Branch    = cpu6502 ? "BPL *" : "JP NS, *";
+		BranchNot = cpu6502 ? "BMI *" : "JP S, *";
 	}
 	else if(W=="V=1" || W=="OVERFLOW")
 	{
 		Eval = "";
-		Branch = "BVS *";
-		BranchNot = "BVC *";
+		Branch    = cpu6502 ? "BVS *" : "JP V, *";
+		BranchNot = cpu6502 ? "BVC *" : "JP NV, *";
 	}
 	else if(W=="V=0" || W=="NOT OVERFLOW")
 	{
 		Eval = "";
-		Branch = "BVC *";
-		BranchNot = "BVS *";
+		Branch    = cpu6502 ? "BVC *" : "JP NV, *";
+		BranchNot = cpu6502 ? "BVS *" : "JP V, *";
    }
    
    if(BranchNot !== "") 
    {
-      return { Eval, BranchNot, Branch };
-      // error(`parse condition error: "${W}"`);      
+      return { Eval, BranchNot, Branch };      
    }
 
 	let Register: string = "";
@@ -1303,52 +1314,111 @@ function ParseCond(W: string)
 
    Register = UpperCase(Trim(Register));
 
-   if(Operator=="IS")
+   if(cpu6502) 
    {
-      Operand = Trim(Operand);
-      if(usinga) Eval = "LDA "+Register+"§";
-      if(usingx) Eval = "LDX "+Register+"§";
-      if(usingy) Eval = "LDY "+Register+"§";
-      if(Operand=="ZERO")         { Operator = "=="; }
-      if(Operand=="NOT ZERO")     { Operator = "!="; }
-      if(Operand=="NEGATIVE")     { Operator = "<";  signedcond = true; }
-      if(Operand=="NOT NEGATIVE") { Operator = ">="; signedcond = true; }
-   }
-   else
-   {
-           if(Register=="A") Eval = "CMP "+Operand;
-      else if(Register=="X") Eval = "CPX "+Operand;
-      else if(Register=="Y") Eval = "CPY "+Operand;
+      if(Operator=="IS")
+      {
+         Operand = Trim(Operand);
+         if(usinga) Eval = "LDA "+Register+"§";
+         if(usingx) Eval = "LDX "+Register+"§";
+         if(usingy) Eval = "LDY "+Register+"§";
+         if(Operand=="ZERO")         { Operator = "=="; }
+         if(Operand=="NOT ZERO")     { Operator = "!="; }
+         if(Operand=="NEGATIVE")     { Operator = "<";  signedcond = true; }
+         if(Operand=="NOT NEGATIVE") { Operator = ">="; signedcond = true; }
+         // TODO positive?
+      }
       else
       {
-         if(usinga) Eval = "LDA "+Register+"§\tCMP "+Operand;
-         if(usingx) Eval = "LDX "+Register+"§\tCPX "+Operand;
-         if(usingy) Eval = "LDY "+Register+"§\tCPY "+Operand;
+              if(Register=="A") Eval = "CMP "+Operand;
+         else if(Register=="X") Eval = "CPX "+Operand;
+         else if(Register=="Y") Eval = "CPY "+Operand;
+         else
+         {
+            if(usinga) Eval = "LDA "+Register+"§\tCMP "+Operand;
+            if(usingx) Eval = "LDX "+Register+"§\tCPX "+Operand;
+            if(usingy) Eval = "LDY "+Register+"§\tCPY "+Operand;
+         }
       }
    }
 
-         if(Operator=="!=") { Branch = "BNE *"; BranchNot = "BEQ *"; }
-    else if(Operator=="<>") { Branch = "BNE *"; BranchNot = "BEQ *"; }
-    else if(Operator=="==") { Branch = "BEQ *"; BranchNot = "BNE *"; }
-    else if(Operator=="=")  { Branch = "BEQ *"; BranchNot = "BNE *"; }
-    else if(Operator==">=" && signedcond==false) { Branch = "BCS *";           BranchNot = "BCC *"; }
-    else if(Operator=="<=" && signedcond==false) { Branch = "BCC *§\tBEQ *";   BranchNot = "BEQ .+4§\tBCS *"; }
-    else if(Operator=="<"  && signedcond==false) { Branch = "BCC *";           BranchNot = "BCS *"; }
-    else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4\tBCS *";  BranchNot = "BCC *§\tBEQ *"; }
-    else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *"; }
-    else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *"; }
-    else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *"; }
-    else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *"; }
-    else Operator = "#";
+   if(cpuz80) 
+   {      
+      if(Operator=="IS")
+      {
+         /*
+         Operand = Trim(Operand);
+         if(usinga) Eval = "LDA "+Register+"§";
+         if(usingx) Eval = "LDX "+Register+"§";
+         if(usingy) Eval = "LDY "+Register+"§";
+         if(Operand=="ZERO")         { Operator = "=="; }
+         if(Operand=="NOT ZERO")     { Operator = "!="; }
+         if(Operand=="NEGATIVE")     { Operator = "<";  signedcond = true; }
+         if(Operand=="NOT NEGATIVE") { Operator = ">="; signedcond = true; }
+         // TODO positive?
+         */
+         throw "not implemented";
+      }
+      else
+      {
+              if(Register=="A") Eval = "CP A,"+Operand;
+         else if(Register=="B") Eval = "CP B,"+Operand;
+         else if(Register=="C") Eval = "CP C,"+Operand;
+         else if(Register=="D") Eval = "CP D,"+Operand;
+         else if(Register=="E") Eval = "CP E,"+Operand;
+         else if(Register=="H") Eval = "CP H,"+Operand;
+         else if(Register=="L") Eval = "CP L,"+Operand;
+         /*
+         else
+         {
+            if(usinga) Eval = "LDA "+Register+"§\tCMP "+Operand;
+            if(usingx) Eval = "LDX "+Register+"§\tCPX "+Operand;
+            if(usingy) Eval = "LDY "+Register+"§\tCPY "+Operand;
+         }
+         */
+      }
+   }
+   
+   if(cpu6502) 
+   {
+           if(Operator=="!=") { Branch = "BNE *"; BranchNot = "BEQ *"; }
+      else if(Operator=="<>") { Branch = "BNE *"; BranchNot = "BEQ *"; }
+      else if(Operator=="==") { Branch = "BEQ *"; BranchNot = "BNE *"; }
+      else if(Operator=="=")  { Branch = "BEQ *"; BranchNot = "BNE *"; }
+      else if(Operator==">=" && signedcond==false) { Branch = "BCS *";           BranchNot = "BCC *"; }
+      else if(Operator=="<=" && signedcond==false) { Branch = "BCC *§\tBEQ *";   BranchNot = "BEQ .+4§\tBCS *"; }
+      else if(Operator=="<"  && signedcond==false) { Branch = "BCC *";           BranchNot = "BCS *"; }
+      else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4\tBCS *";  BranchNot = "BCC *§\tBEQ *"; }
+      else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *"; }
+      else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *"; }
+      else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *"; }
+      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *"; }
+      else Operator = "#";
+   }
+   else if(cpuz80) 
+   {
+           if(Operator=="!=") { Branch = "JR NZ,*"; BranchNot = "JR Z,*"; }
+      else if(Operator=="<>") { Branch = "JR NZ,*"; BranchNot = "JR Z,*"; }
+      else if(Operator=="==") { Branch = "JR Z,*";  BranchNot = "JR NZ,*"; }
+      else if(Operator=="=")  { Branch = "JR Z,*";  BranchNot = "JR NZ,*"; }
+      else if(Operator==">=" && signedcond==false) { Branch = "JR C, *";             BranchNot = "JR NC,*"; }
+      else if(Operator=="<=" && signedcond==false) { Branch = "JR NC, *§\tJR Z, *";  BranchNot = "JR Z, .+4§\tJR C, *"; }
+      else if(Operator=="<"  && signedcond==false) { Branch = "JR NC, *";            BranchNot = "JR C, *"; }
+      else if(Operator==">"  && signedcond==false) { Branch = "JR Z, .+4\tJR C, *";  BranchNot = "JR NC, *§\tJR Z, *"; }
+      else if(Operator==">=" && signedcond==true ) { Branch = "JP NS, *";            BranchNot = "JP S, *"; }
+      else if(Operator=="<=" && signedcond==true ) { Branch = "JP S, *§\tJR Z, *";   BranchNot = "JR Z, .+4§\tJP NS, *"; }
+      else if(Operator=="<"  && signedcond==true ) { Branch = "JP S, *";             BranchNot = "JP NS, *"; }
+      else if(Operator==">"  && signedcond==true ) { Branch = "JR Z, .+4\tJP NS, *"; BranchNot = "JP S, *§\tJR Z, *"; }
+      else Operator = "#";
+   }
 
-    if(Operator=="#")
-    {
-        error(`not valid condition: ${OriginalW}`);        
-    }
+   if(Operator=="#")
+   {
+      error(`not valid condition: ${OriginalW}`);        
+   }
 
     return { Eval, BranchNot, Branch };
 }
-
 
 function IsBitmap(Linea: string,  nl: number): string | undefined
 {
@@ -1357,19 +1427,6 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
    if(match === null) return undefined;
 
    const [all, value] = match;
-
-
-   /*
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
-      
-   let G = GetToken(Linea, " "); Linea = G.Rest;
-   let StringaBitmap = G.Token;
-
-   if(StringaBitmap!="BITMAP") return undefined;
-
-   G = GetToken(Linea," "); Linea = G.Rest;
-   let Argomento = Trim(G.Token);
-   */
 
    let Argomento = Trim(value);
 
@@ -1406,8 +1463,7 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
      }
    }
 
-   let ReplaceTo = "   byte " + byteval;
-
+   let ReplaceTo = `   ${BYTE} ${byteval}`;
    return ReplaceTo;
 }
 
@@ -1518,7 +1574,7 @@ function CBMFloat(S: string)
 
 function IsFloat(Linea: string,  nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let NomeLabel;
    let StringaFloat;
@@ -1543,7 +1599,7 @@ function IsFloat(Linea: string,  nl: number): string | undefined
       Def = Linea;
    }
 
-   ReplaceTo = NomeLabel + " byte ";
+   ReplaceTo = NomeLabel + ` ${BYTE} `;
    Def = Trim(Def) + ",";
 
    for(;;)
@@ -1562,7 +1618,7 @@ function IsFloat(Linea: string,  nl: number): string | undefined
 
 function IsMACRO(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
  
    let PM;
    let PList: string[] = [];
@@ -1660,7 +1716,7 @@ function IsENDMACRO(Linea: string, nl: number): string | undefined
 
 function IsMacroCall(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let G = GetToken(Linea," "); Linea = G.Rest;
 
@@ -1703,7 +1759,7 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
 
 function IsSUB(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaSUB = GetParm(Linea, " ", 0);
 
@@ -1727,7 +1783,7 @@ function IsSUB(Linea: string, nl: number): string | undefined
 
 function IsEXITSUB(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaREPEAT;
 
@@ -1758,7 +1814,7 @@ function IsEXITSUB(Linea: string, nl: number): string | undefined
 
 function IsENDSUB(Linea: string, nl: number): string | undefined
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StringaEndMacro  = GetParm(Linea, " ", 0);
    let StringaEndMacro1 = GetParm(Linea, " ", 1);
@@ -1784,7 +1840,7 @@ function IsENDSUB(Linea: string, nl: number): string | undefined
 
 function IsBasic(Linea: string, nl: number): boolean
 {
-   Linea = UpperCase(Trim(TruncateComment(Linea)))+" ";
+   Linea = UpperCase(Trim(Linea))+" ";
 
    let StuffLine;
    let si=-1;
@@ -1794,7 +1850,7 @@ function IsBasic(Linea: string, nl: number): boolean
    {
       for(let t=nl+1; t<L.Count; t++)
       {
-         let Linx = UpperCase(Trim(TruncateComment(L.Strings[t])));
+         let Linx = UpperCase(Trim(L.Strings[t]));
          if(Linx.AnsiPos("BASIC END")>0) break;
 
          if(StartWithNumber(Linx))
@@ -1820,7 +1876,7 @@ function IsBasic(Linea: string, nl: number): boolean
       L.Strings[nl] = "";
       for(let t=nl+1; t<L.Count; t++)
       {
-         Linea = UpperCase(Trim(TruncateComment(L.Strings[t])));
+         Linea = UpperCase(Trim(L.Strings[t]));
          if(Linea.AnsiPos("BASIC END")>0)
          {
             L.Strings[t] = `basic_row_${basic_row}:  BYTE 0,0`;            
