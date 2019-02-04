@@ -306,6 +306,30 @@ function RemoveComments()
         }
     }
     L.SetText(Whole);
+
+   // remove ; comments
+   let R = new RegExp(/^(.*);(.*)$/gmi);
+   for(let t=0; t<L.Count; t++) 
+   {
+      const Linea = L.Strings[t];
+      const match = R.exec(Linea);
+      if(match !== null) {
+         const [all, purged, comment] = match;
+         L.Strings[t] = purged;     
+      }
+   }
+
+   // remove // comments
+   R = new RegExp(/^(.*)\/\/(.*)$/gmi);
+   for(let t=0; t<L.Count; t++) 
+   {
+      const Linea = L.Strings[t];
+      const match = R.exec(Linea);
+      if(match !== null) {
+         const [all, purged, comment] = match;
+         L.Strings[t] = purged;     
+      }
+   }
 }
 
 function ResolveInclude(): boolean

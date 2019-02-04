@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -217,6 +217,26 @@ function RemoveComments() {
         }
     }
     L.SetText(Whole);
+    // remove ; comments
+    var R = new RegExp(/^(.*);(.*)$/gmi);
+    for (var t = 0; t < L.Count; t++) {
+        var Linea = L.Strings[t];
+        var match = R.exec(Linea);
+        if (match !== null) {
+            var all = match[0], purged = match[1], comment = match[2];
+            L.Strings[t] = purged;
+        }
+    }
+    // remove // comments
+    R = new RegExp(/^(.*)\/\/(.*)$/gmi);
+    for (var t = 0; t < L.Count; t++) {
+        var Linea = L.Strings[t];
+        var match = R.exec(Linea);
+        if (match !== null) {
+            var all = match[0], purged = match[1], comment = match[2];
+            L.Strings[t] = purged;
+        }
+    }
 }
 function ResolveInclude() {
     for (var t = 0; t < L.Count; t++) {

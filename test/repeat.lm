@@ -1,3 +1,17 @@
+TEXT ; COMMENT
+TEXT // COMMENT
+
+if x>#10 then
+   text
+end if
+
+if (signed) x>#10 then
+   text
+end if
+
+;**************************
+
+/*
 basic start
    10 print "hello"
       print "world"
