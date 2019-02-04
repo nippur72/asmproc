@@ -303,7 +303,7 @@ end macro
 - `const` - meaning a costant value (6502's immediate mode '#')
 - `mem` - meaning a memory location (6502's absolute or zero page mode)
 - `indirect` - pointer deference (6502's indirect mode, enclosed in ())
-- `"quoted value"` - any literal value enclosed in quotes
+- `"quoted value"` - a register value enclosed in quotes ("A", "X", "Y")
 
 When defining the body of the macro parameters can be referenced
 with `{1}`, `{2}`, ...

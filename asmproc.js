@@ -1638,8 +1638,10 @@ function IsMacroCall(Linea, nl) {
             list.push("CONST");
         else if (p.startsWith("(") && p.endsWith(")"))
             list.push("INDIRECT");
-        else if (p.startsWith('"') && p.endsWith('"'))
-            list.push(p);
+        else 
+        //if(p.startsWith('"') && p.endsWith('"')) list.push(p);
+        if (p == "A" || p == "B" || p == "C" || p == "D" || p == "E" || p == "H" || p == "L" || p == "IX" || p == "IY" || p == "X" || p == "Y")
+            list.push("\"" + p + "\"");
         else
             list.push("MEM");
     }

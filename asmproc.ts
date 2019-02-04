@@ -1744,11 +1744,14 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
       if(p == "") break;
            if(p.startsWith("#")) list.push("CONST");
       else if(p.startsWith("(") && p.endsWith(")")) list.push("INDIRECT");
-      else if(p.startsWith('"') && p.endsWith('"')) list.push(p);
-      else list.push("MEM");      
+      else       
+           //if(p.startsWith('"') && p.endsWith('"')) list.push(p);
+           if(p=="A"||p=="B"||p=="C"||p=="D"||p=="E"||p=="H"||p=="L"||p=="IX"||p=="IY"||p=="X"||p=="Y") list.push(`"${p}"`);      
+      else list.push("MEM");       
    }
 
    const matching = matchingMacros.filter(e=>e.Parameters.join(",") === list.join(","));   
+
         if(matching.length === 0) return undefined;
    else if(matching.length !== 1) error(`more than on macro matching "${NomeMacro}"`);
 
