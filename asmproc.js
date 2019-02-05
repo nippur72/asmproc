@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -143,11 +143,40 @@ var Tokens = []; // 256
 var Ascii = []; // 256
 var Ferr;
 var dasm = false;
+var ca65 = false;
 var z80asm = false;
 var cpu6502 = false;
 var cpuz80 = false;
 var JMP;
 var BYTE;
+var PARENS;
+function hibyte(byte) {
+    if (dasm)
+        return byte + "/256";
+    else if (ca65)
+        return ".HIBYTE(" + byte + ")";
+    else if (z80asm)
+        return byte + "/256";
+    throw "";
+}
+function lobyte(byte) {
+    if (dasm)
+        return byte + "%256";
+    else if (ca65)
+        return ".LOBYTE(" + byte + ")";
+    else if (z80asm)
+        return byte + "%256";
+    throw "";
+}
+function mod(value, div) {
+    if (dasm)
+        return value + "%" + div;
+    else if (ca65)
+        return value + " .MOD " + div;
+    else if (z80asm)
+        return value + "%" + div;
+    throw "";
+}
 function error(msg, cline) {
     if (cline !== undefined) {
         error(msg + " in line " + cline + " of " + Ferr);
@@ -172,16 +201,27 @@ function main() {
     }
     // set target
     dasm = options.target === "dasm";
+    ca65 = options.target === "ca65";
     z80asm = options.target === "z80asm";
-    cpu6502 = dasm;
+    cpu6502 = dasm || ca65;
     cpuz80 = z80asm;
     if (cpu6502) {
         JMP = "JMP";
-        BYTE = "byte";
     }
     if (cpuz80) {
         JMP = "JP ";
+    }
+    if (dasm) {
+        BYTE = "byte";
+        PARENS = "[]";
+    }
+    if (ca65) {
+        BYTE = ".byte";
+        PARENS = "()";
+    }
+    if (z80asm) {
         BYTE = "defb";
+        PARENS = "()";
     }
     L = new TStringList();
     var FName = options.input;
@@ -271,11 +311,30 @@ function ResolveInclude() {
     }
     return false;
 }
+function IsIdentifier(s) {
+    var R = new RegExp(/^\s*[_a-zA-Z]+[_a-zA-Z0-9]*$/gmi);
+    var match = R.exec(s);
+    if (match === null)
+        return false;
+    return true;
+}
 function RemoveSemicolon() {
-    var Whole = L.Text();
-    var ReplaceTo = " \x0d\x0a\t ";
-    Whole = Whole.replace(/ : /g, ReplaceTo);
-    L.SetText(Whole);
+    // remove : semicolon
+    for (var t = 0; t < L.Count; t++) {
+        while (true) {
+            var Linea = L.Strings[t];
+            var R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+            var match = R.exec(Linea);
+            if (match !== null) {
+                var all = match[0], leftpart = match[1], rightpart = match[2];
+                if (IsIdentifier(leftpart))
+                    break;
+                L.Strings[t] = leftpart + "\u00A7   " + rightpart;
+            }
+            else
+                break;
+        }
+    }
 }
 function MakeAllUpperCase() {
     var Whole = L.Text();
@@ -1744,7 +1803,7 @@ function IsBasic(Linea, nl) {
         for (var t = nl + 1; t < L.Count; t++) {
             Linea = UpperCase(Trim(L.Strings[t]));
             if (Linea.AnsiPos("BASIC END") > 0) {
-                L.Strings[t] = "basic_row_" + basic_row + ":  BYTE 0,0";
+                L.Strings[t] = "basic_row_" + basic_row + ":  " + BYTE + " 0,0";
                 return true;
             }
             L.Strings[t] = TranslateBasic(Trim(L.Strings[t]) + " ");
@@ -1825,11 +1884,11 @@ function TranslateBasic(Linea) {
                 if (x > 0) {
                     var Symbol_1 = Linea.SubString(2, x - 2);
                     Linea = Linea.SubString(x + 1, Linea.Length());
-                    var prima_cifra = "[[" + Symbol_1 + "%10] + $30]";
-                    var seconda_cifra = "[[[" + Symbol_1 + "%100-[" + Symbol_1 + "%10]]/10] + $30]";
-                    var terza_cifra = "[[[" + Symbol_1 + "%1000-[" + Symbol_1 + "%100]]/100] + $30]";
-                    var quarta_cifra = "[[[" + Symbol_1 + "%10000-[" + Symbol_1 + "%1000]]/1000] + $30]";
-                    var quinta_cifra = "[[[" + Symbol_1 + "%100000-[" + Symbol_1 + "%10000]]/10000] + $30]";
+                    var prima_cifra = "[[" + mod(Symbol_1, "10") + "] + $30]";
+                    var seconda_cifra = "[[[" + mod(Symbol_1, "100") + "-[" + mod(Symbol_1, "10") + "]]/10] + $30]";
+                    var terza_cifra = "[[[" + mod(Symbol_1, "1000") + "-[" + mod(Symbol_1, "100") + "]]/100] + $30]";
+                    var quarta_cifra = "[[[" + mod(Symbol_1, "10000") + "-[" + mod(Symbol_1, "1000") + "]]/1000] + $30]";
+                    var quinta_cifra = "[[[" + mod(Symbol_1, "100000") + "-[" + mod(Symbol_1, "10000") + "]]/10000] + $30]";
                     Compr = Compr + quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
                     break_next_token = true;
                     // break nexttoken;
@@ -1881,7 +1940,10 @@ function TranslateBasic(Linea) {
     Compr = Compr + "0";
     var Label = "basic_row_" + basic_row + ":";
     var NextLabel = "basic_row_" + (basic_row + 1);
-    var ReplaceTo = Label + "  BYTE [" + NextLabel + "%256],[" + NextLabel + "/256],[" + numlin + "%256],[" + numlin + "/256]," + Compr;
+    var ReplaceTo = Label + ("  " + BYTE + " [" + lobyte(NextLabel) + "],[" + hibyte(NextLabel) + "],[" + lobyte(numlin.toString()) + "],[" + hibyte(numlin.toString()) + "]," + Compr);
+    if (PARENS !== "[]") {
+        ReplaceTo = ReplaceTo.replace(/\[/g, "(").replace(/\]/g, ")");
+    }
     basic_row++;
     return ReplaceTo;
 }

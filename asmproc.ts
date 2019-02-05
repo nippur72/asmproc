@@ -15,19 +15,20 @@
 // TODO change float into cbmfloat, output as comment
 // TODO basic compact by default // preserve
 // TODO first char space in DASM?
+// TODO #define ?
 // TODO Z80 if then ret / return
 // TODO Z80 FOR
 // TODO Z80 Macro
 // TODO Z80 Condition
 // TODO macro fix literal value call
 // TODO bitmap for c64 sprites
+// TODO cc65
 
 /*
 TO DO
 =====
 
 - loop forever
-- : in quotes
 - dim
 - float
 - float expr compiler
@@ -42,22 +43,30 @@ TO DO
 */
 
 /*
-DASM VS Z80ASM
-
-same:
+DASM 
    include
    IF ELSE ENDIF IFDEF IFNDEF
+   byte
+   word
+   equ (define)
+   parens: []
 
-different
-   byte    defb
-   word    defw
-           defl
-           defm
-           defs
-           define
-           defs size, fill 
+ca65
+   .include
+   .if .else .endif .ifdef .ifndef
+   .byte
+   .word
+   .define   
+   parens: ()
 
-flags 
+Z80ASM
+   include
+   IF ELSE ENDIF IFDEF IFNDEF
+   defb
+   defw
+   define
+   defl, defm, defs size, fill 
+   parens: ?
 
 6502        Z80
 ===========================
@@ -240,12 +249,35 @@ let Ascii:  string[] = []; // 256
 let Ferr: string;
 
 let dasm    = false;
+let ca65    = false;
 let z80asm  = false;
 let cpu6502 = false;
 let cpuz80  = false;
 
 let JMP: string;
 let BYTE: string;
+let PARENS: string;
+
+function hibyte(byte: string) {
+        if(dasm)   return `${byte}/256`;
+   else if(ca65)   return `.HIBYTE(${byte})`;
+   else if(z80asm) return `${byte}/256`;
+   throw "";   
+}
+
+function lobyte(byte: string) {
+        if(dasm)   return `${byte}%256`;
+   else if(ca65)   return `.LOBYTE(${byte})`;
+   else if(z80asm) return `${byte}%256`;
+   throw "";
+}
+
+function mod(value: string, div: string) {
+        if(dasm)   return `${value}%${div}`;
+   else if(ca65)   return `${value} .MOD ${div}`;
+   else if(z80asm) return `${value}%${div}`;
+   throw "";
+}
 
 function error(msg: string, cline?: number)
 {
@@ -277,20 +309,37 @@ function main()
 
    // set target
    dasm = options.target === "dasm";
+   ca65 = options.target === "ca65";
    z80asm = options.target === "z80asm";
-   cpu6502 = dasm;
+   cpu6502 = dasm || ca65;
    cpuz80 = z80asm;   
 
    if(cpu6502) 
    {
-      JMP = "JMP";
-      BYTE = "byte";
+      JMP = "JMP";      
    }
 
    if(cpuz80) 
    {
-      JMP = "JP ";
+      JMP = "JP ";      
+   }
+
+   if(dasm) 
+   {
+      BYTE = "byte";
+      PARENS = "[]";
+   }
+
+   if(ca65) 
+   {
+      BYTE = ".byte";
+      PARENS = "()";
+   }
+
+   if(z80asm) 
+   {
       BYTE = "defb";
+      PARENS = "()";
    }
 
    L = new TStringList();
@@ -412,14 +461,32 @@ function ResolveInclude(): boolean
     return false;
 }
 
+function IsIdentifier(s: string) 
+{
+   const R = new RegExp(/^\s*[_a-zA-Z]+[_a-zA-Z0-9]*$/gmi);
+   const match = R.exec(s);
+   if(match === null) return false;
+   return true;
+}
+
 function RemoveSemicolon()
 {  
-   let Whole = L.Text();
-   let ReplaceTo = " \x0d\x0a\t ";
-
-   Whole = Whole.replace(/ : /g, ReplaceTo);
-
-   L.SetText(Whole);
+   // remove : semicolon
+   for(let t=0; t<L.Count; t++) 
+   {      
+      while(true)
+      {
+         const Linea = L.Strings[t];      
+         const R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+         const match = R.exec(Linea);
+         if(match !== null) {         
+            const [all, leftpart, rightpart] = match;         
+            if(IsIdentifier(leftpart)) break;            
+            L.Strings[t] = `${leftpart}§   ${rightpart}`;            
+         }
+         else break;
+      }       
+   }
 }
 
 function MakeAllUpperCase()
@@ -1884,7 +1951,7 @@ function IsBasic(Linea: string, nl: number): boolean
          Linea = UpperCase(Trim(L.Strings[t]));
          if(Linea.AnsiPos("BASIC END")>0)
          {
-            L.Strings[t] = `basic_row_${basic_row}:  BYTE 0,0`;            
+            L.Strings[t] = `basic_row_${basic_row}:  ${BYTE} 0,0`;            
             return true;
          }
          L.Strings[t] = TranslateBasic(Trim(L.Strings[t])+" ");
@@ -1981,11 +2048,11 @@ function TranslateBasic(Linea: string): string
             {
                let Symbol = Linea.SubString(2,x-2);
                Linea = Linea.SubString(x+1,Linea.Length());
-               let prima_cifra   = "[["  + Symbol + "%10] + $30]";
-               let seconda_cifra = "[[[" + Symbol + "%100-["    + Symbol + "%10]]/10] + $30]";
-               let terza_cifra   = "[[[" + Symbol + "%1000-["   + Symbol + "%100]]/100] + $30]";
-               let quarta_cifra  = "[[[" + Symbol + "%10000-["  + Symbol + "%1000]]/1000] + $30]";
-               let quinta_cifra  = "[[[" + Symbol + "%100000-[" + Symbol + "%10000]]/10000] + $30]";
+               let prima_cifra   = "[["  + mod(Symbol,    "10") + "] + $30]";
+               let seconda_cifra = "[[[" + mod(Symbol,   "100") + "-[" + mod(Symbol,"10")   +"]]/10] + $30]";
+               let terza_cifra   = "[[[" + mod(Symbol,  "1000") + "-[" + mod(Symbol,"100")  +"]]/100] + $30]";
+               let quarta_cifra  = "[[[" + mod(Symbol, "10000") + "-[" + mod(Symbol,"1000") +"]]/1000] + $30]";
+               let quinta_cifra  = "[[[" + mod(Symbol,"100000") + "-[" + mod(Symbol,"10000")+"]]/10000] + $30]";
                Compr = Compr + quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
                break_next_token = true;
                // break nexttoken;
@@ -2049,7 +2116,12 @@ function TranslateBasic(Linea: string): string
    let Label = `basic_row_${basic_row}:`;
    let NextLabel = `basic_row_${basic_row+1}`;
 
-   let ReplaceTo = Label+"  BYTE ["+NextLabel+"%256],["+NextLabel+"/256],["+numlin+"%256],["+numlin+"/256],"+Compr;
+   let ReplaceTo = Label+`  ${BYTE} [${lobyte(NextLabel)}],[${hibyte(NextLabel)}],[${lobyte(numlin.toString())}],[${hibyte(numlin.toString())}],${Compr}`;
+
+   if(PARENS !== "[]")
+   {
+      ReplaceTo = ReplaceTo.replace(/\[/g, "(").replace(/\]/g, ")");
+   }
 
    basic_row++;
 

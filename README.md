@@ -23,16 +23,21 @@ for `.asm` files.
 
 From the command prompt:
 ```
-asmproc -i <inputfile> -o <destfile>
+asmproc -i <inputfile> -o <destfile> [-t target]
 ```
 
 - `inputfile` is the source file written according 
 to the `asmproc` syntax
 
 - `destfile` is the destination file that is going 
-to be compiled with DASM.
+to be compiled with an external assembler.
 
 Both `inputfile` and `destfile` are plain text files.
+
+- `target` is the target assembler program:
+   - `dasm` DASM assembler (default)
+   - `ca65` cc65 assembler
+   - `z80asm` z88dk assembler
 
 If `asmproc` fails to compile due to an error in the source file
 the `%ERRORLEVEL%` shell variable is set to `-1` so that 
