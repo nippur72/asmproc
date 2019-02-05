@@ -387,6 +387,14 @@ function ProcessFile() {
     }
     // change § into newlines (needed for DASM IF-THENs)   
     L.SetText(L.Text().replace(/§/g, "\n"));
+    // self modifying labels
+    for (t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = void 0;
+        ReplaceTo = IsSelfModLabel(Dummy, t);
+        if (ReplaceTo !== undefined)
+            L.Strings[t] = ReplaceTo;
+    }
     // pre-process macros and build macro list   
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
@@ -685,6 +693,16 @@ function IsREPEAT(Linea, nl) {
     StackRepeat.Add(nl);
     var ReplaceTo = Label("REPEAT", nl, "START") + ":";
     return ReplaceTo;
+}
+function IsSelfModLabel(Linea, nl) {
+    var R = new RegExp(/^(.*)\*([a-zA-Z]+[a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+    var match = R.exec(Linea);
+    if (match !== null) {
+        var all = match[0], leftside = match[1], varname = match[2], varparm = match[3], rightside = match[4];
+        var arg = (varparm === "" || varparm === null) ? "$0000" : varparm;
+        var ReplaceTo = varname + " = _" + varname + "+1 \u00A7_" + varname + ":" + leftside + " " + arg + rightside;
+        return ReplaceTo;
+    }
 }
 function IsEXITREPEAT(Linea, nl) {
     // CASE 1: turns "IF cond THEN EXIT REPEAT" into "IF cond THEN GOTO REPEAT_n_END"

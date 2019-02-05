@@ -558,6 +558,15 @@ function ProcessFile()
    
    // change § into newlines (needed for DASM IF-THENs)   
    L.SetText(L.Text().replace(/§/g, "\n"));
+
+   // self modifying labels
+   for(t=0; t<L.Count; t++)
+   {
+    	let Dummy = L.Strings[t];    	
+      let ReplaceTo;
+      ReplaceTo = IsSelfModLabel(Dummy, t); 
+      if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;   
+   }
    
    // pre-process macros and build macro list   
    for(t=0; t<L.Count; t++)
@@ -891,6 +900,18 @@ function IsREPEAT(Linea: string, nl: number): string | undefined
 
    let ReplaceTo = Label("REPEAT", nl, "START")+":";
    return ReplaceTo;
+}
+
+function IsSelfModLabel(Linea: string, nl: number): string | undefined
+{   
+   let R = new RegExp(/^(.*)\*([a-zA-Z]+[a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+   let match = R.exec(Linea);
+   if(match !== null) {            
+      const [all, leftside, varname, varparm, rightside] = match;      
+      let arg = (varparm === "" || varparm === null) ? "$0000" : varparm;
+      let ReplaceTo = `${varname} = _${varname}+1 §_${varname}:${leftside} ${arg}${rightside}`;
+      return ReplaceTo;
+   }   
 }
 
 function IsEXITREPEAT(Linea: string, nl: number): string | undefined
