@@ -5,7 +5,7 @@
 // TODO "/*" comments when in quoted text
 // TODO JMP simulate BRA branch always
 // TODO self modifying code
-// TODO WHILE, LOOP, UNTIL check no condition
+// TODO WHILE, LOOP, UNTIL check no condition or loop forever
 // TODO SUB nomesub = Identifier
 // TODO SUB then rts or then exit sub ?
 // TODO SUB implement RETURN
@@ -41,7 +41,6 @@ TO DO
 - inline sub / call sub
 - inline sub / call
 - controllare operatori signed <,>,
-- condizioni a<>#0 ==> if zero
 */
 
 /*
@@ -1504,7 +1503,7 @@ function ParseCond(W: string)
       else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *";             cmp_not_needed = true; }
       else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *";   cmp_not_needed = true; }
       else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *";             cmp_not_needed = true; }
-      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *";   }
+      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *";     cmp_not_needed = true; }
       else Operator = "#";
 
       if(Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") 
