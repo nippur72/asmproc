@@ -24,6 +24,8 @@
 // TODO bitmap for c64 sprites
 // TODO cc65
 
+// TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
+
 /*
 TO DO
 =====
@@ -177,6 +179,11 @@ function Trim(s: string): string
 
 function RemoveQuote(S: string) {
     return S.substr(1, S.length-2);
+}
+
+function RemoveHash(S: string) {
+   if(S.startsWith("#")) return S.substr(1);
+   else return S;
 }
 
 declare global 
@@ -722,7 +729,7 @@ function ProcessFile()
    // change § into newlines
    L.SetText(L.Text().replace(/§/g,"\n"));
 
-   // substitute DASM keywords
+   // substitute reserved keywords
    for(t=0;t<L.Count;t++)
    {
     	let Dummy = L.Strings[t];
@@ -1138,11 +1145,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    let StringaFOR: string;
    let StringaStart: string;
    let StringaEnd: string;
-   let StringaStep: string;
+   let Step: string;
    let Register: string;
    let StartValue: string;
-   let StartCondition: string;
-   let StepCondition: string = "";
+   let StartIstruction: string;
+   let StepInstruction: string = "";
 
    let G = GetToken(Linea," "); Linea = G.Rest;
    StringaFOR = G.Token;
@@ -1156,13 +1163,13 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    StringaEnd = G.Token;
    if(StringaEnd!="")
    {
-	  StringaStep = Trim(Linea);
-	  if(StringaStep=="") return undefined;
+	  Step = Trim(Linea);
+	  if(Step=="") return undefined;
    }
    else
    {
 	  StringaEnd = Linea;
-	  StringaStep = "#1";
+	  Step = "#1";
    }
    StringaEnd = Trim(StringaEnd);
    if(StringaEnd=="") return undefined;
@@ -1173,20 +1180,20 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    StartValue = StringaStart;
    if(Register=="")
    {
-       error("invalid FOR starting condition");
+      error("invalid FOR starting condition");
    }
 
    if(Register=="X")
    {
-      StartCondition = "LDX "+StartValue;
-           if(StringaStep=="#1")  { StepCondition = "\tinx";                    StringaEnd = Register + "<"  + StringaEnd + "+1"; }
-      else if(StringaStep=="#2")  { StepCondition = "\tinx§\tinx";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
-      else if(StringaStep=="#3")  { StepCondition = "\tinx§\tinx§\tinx";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
-      else if(StringaStep=="#4")  { StepCondition = "\tinx§\tinx§\tinx§\tinx";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(StringaStep=="#-1") { StepCondition = "\tdex";                    StringaEnd = Register + ">=" + StringaEnd + "-1"; }
-      else if(StringaStep=="#-2") { StepCondition = "\tdex§\tdex";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
-      else if(StringaStep=="#-3") { StepCondition = "\tdex§\tdex§\tdexx";       StringaEnd = Register + ">=" + StringaEnd + "-3"; }
-      else if(StringaStep=="#-4") { StepCondition = "\tdex§\tdex§\tdex§\tdexx"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
+      StartIstruction = "LDX "+StartValue;
+           if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#2")  { StepInstruction = "\tinx§\tinx";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
+      else if(Step=="#3")  { StepInstruction = "\tinx§\tinx§\tinx";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
+      else if(Step=="#4")  { StepInstruction = "\tinx§\tinx§\tinx§\tinx";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
+      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-2") { StepInstruction = "\tdex§\tdex";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
+      else if(Step=="#-3") { StepInstruction = "\tdex§\tdex§\tdexx";       StringaEnd = Register + ">=" + StringaEnd + "-3"; }
+      else if(Step=="#-4") { StepInstruction = "\tdex§\tdex§\tdex§\tdexx"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
       else
       {
           error("invalid STEP in FOR");
@@ -1194,15 +1201,15 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    }
    else if(Register=="Y")
    {
-      StartCondition = "LDY "+StartValue;
-           if(StringaStep=="#1")  { StepCondition = "\tiny";                    StringaEnd = Register + "<"  + StringaEnd + "+1"; }
-      else if(StringaStep=="#2")  { StepCondition = "\tiny§\tiny";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
-      else if(StringaStep=="#3")  { StepCondition = "\tiny§\tiny§\tiny";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
-      else if(StringaStep=="#4")  { StepCondition = "\tiny§\tiny§\tiny§\tiny";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(StringaStep=="#-1") { StepCondition = "\tdey";                    StringaEnd = Register + ">=" + StringaEnd + "-1"; }
-      else if(StringaStep=="#-2") { StepCondition = "\tdey§\tdey";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
-      else if(StringaStep=="#-3") { StepCondition = "\tdey§\tdey§\tdey";        StringaEnd = Register + ">=" + StringaEnd + "-3"; }
-      else if(StringaStep=="#-4") { StepCondition = "\tdey§\tdey§\tdey§\tdey";  StringaEnd = Register + ">=" + StringaEnd + "-4"; }
+      StartIstruction = "LDY "+StartValue;
+           if(Step=="#1")  { StepInstruction = "\tiny";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#2")  { StepInstruction = "\tiny§\tiny";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
+      else if(Step=="#3")  { StepInstruction = "\tiny§\tiny§\tiny";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
+      else if(Step=="#4")  { StepInstruction = "\tiny§\tiny§\tiny§\tiny";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
+      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-2") { StepInstruction = "\tdey§\tdey";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
+      else if(Step=="#-3") { StepInstruction = "\tdey§\tdey§\tdey";        StringaEnd = Register + ">=" + StringaEnd + "-3"; }
+      else if(Step=="#-4") { StepInstruction = "\tdey§\tdey§\tdey§\tdey";  StringaEnd = Register + ">=" + StringaEnd + "-4"; }
       else
       {
           error("invalid STEP in FOR");
@@ -1210,15 +1217,15 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    }
    else if(Register=="A")
    {
-      StartCondition = "LDA "+StartValue;
-           if(StringaStep=="#1")  { StepCondition = "\tclc§\tadc #1";   StringaEnd = Register + "<"  + StringaEnd + "+1"; }
-      else if(StringaStep=="#2")  { StepCondition = "\tclc§\tadc #2";   StringaEnd = Register + "<"  + StringaEnd + "+2"; }
-      else if(StringaStep=="#3")  { StepCondition = "\tclc§\tadc #3";   StringaEnd = Register + "<"  + StringaEnd + "+3"; }
-      else if(StringaStep=="#4")  { StepCondition = "\tclc§\tadc #4";   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(StringaStep=="#-1") { StepCondition = "\tclc§\tadc #255"; StringaEnd = Register + ">=" + StringaEnd + "-1"; }
-      else if(StringaStep=="#-2") { StepCondition = "\tclc§\tadc #254"; StringaEnd = Register + ">=" + StringaEnd + "-2"; }
-      else if(StringaStep=="#-3") { StepCondition = "\tclc§\tadc #253"; StringaEnd = Register + ">=" + StringaEnd + "-3"; }
-      else if(StringaStep=="#-4") { StepCondition = "\tclc§\tadc #252"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
+      StartIstruction = "LDA "+StartValue;
+           if(Step=="#1")  { StepInstruction = "\tclc§\tadc #1";   StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#2")  { StepInstruction = "\tclc§\tadc #2";   StringaEnd = Register + "<"  + StringaEnd + "+2"; }
+      else if(Step=="#3")  { StepInstruction = "\tclc§\tadc #3";   StringaEnd = Register + "<"  + StringaEnd + "+3"; }
+      else if(Step=="#4")  { StepInstruction = "\tclc§\tadc #4";   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
+      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "=" + StringaEnd + ""; }
+      else if(Step=="#-2") { StepInstruction = "\tclc§\tadc #254"; StringaEnd = Register + ">=" + StringaEnd + "-2"; }
+      else if(Step=="#-3") { StepInstruction = "\tclc§\tadc #253"; StringaEnd = Register + ">=" + StringaEnd + "-3"; }
+      else if(Step=="#-4") { StepInstruction = "\tclc§\tadc #252"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
       else
       {
           error("invalid STEP in FOR");
@@ -1226,32 +1233,32 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    }
    else
    {
-      StartCondition = "LDA "+StartValue+"§\tSTA "+Register;
-           if(StringaStep=="#1")  { StepCondition = "\tinc "+Register;                                                            StringaEnd = Register + "<"  + StringaEnd + "+1"; }
-      else if(StringaStep=="#2")  { StepCondition = "\tinc "+Register+"§\tinc "+Register;                                         StringaEnd = Register + "<"  + StringaEnd + "+2"; }
-      else if(StringaStep=="#3")  { StepCondition = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;                      StringaEnd = Register + "<"  + StringaEnd + "+3"; }
-      else if(StringaStep=="#4")  { StepCondition = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(StringaStep=="#-1") { StepCondition = "\tdec "+Register;                                                            StringaEnd = Register + ">=" + StringaEnd + "-1"; }
-      else if(StringaStep=="#-2") { StepCondition = "\tdec "+Register+"§\tdec "+Register;                                         StringaEnd = Register + ">=" + StringaEnd + "-2"; }
-      else if(StringaStep=="#-3") { StepCondition = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;                      StringaEnd = Register + ">=" + StringaEnd + "-3"; }
-      else if(StringaStep=="#-4") { StepCondition = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;   StringaEnd = Register + ">=" + StringaEnd + "-4"; }
+      StartIstruction = "LDA "+StartValue+"§\tSTA "+Register;
+           if(Step=="#1")  { StepInstruction = "\tinc "+Register;                                                            StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#2")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register;                                         StringaEnd = Register + "<"  + StringaEnd + "+2"; }
+      else if(Step=="#3")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;                      StringaEnd = Register + "<"  + StringaEnd + "+3"; }
+      else if(Step=="#4")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
+      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-2") { StepInstruction = "\tdec "+Register+"§\tdec "+Register;                                         StringaEnd = Register + ">=" + StringaEnd + "-2"; }
+      else if(Step=="#-3") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;                      StringaEnd = Register + ">=" + StringaEnd + "-3"; }
+      else if(Step=="#-4") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;   StringaEnd = Register + ">=" + StringaEnd + "-4"; }
       else
       {
           error("invalid STEP in FOR");
       }
    }
 
-   let ReplaceTo = Label("FOR",nl,"START")+":§"+"\t"+StartCondition+"§";
+   let ReplaceTo = Label("FOR",nl,"START")+":§"+"\t"+StartIstruction+"§";
    ReplaceTo = ReplaceTo+Label("FOR",nl,"LOOP")+":";
 
    let { Eval, BranchNot, Branch } = ParseCond(StringaEnd);
    let Lab = Label("FOR",nl,"LOOP");
    Branch = Branch.replace(/\*/g,Lab);
 
-   StepCondition = "\t"+StepCondition+"§\t"+Eval+"§\t"+Branch+"§";
+   StepInstruction = "\t"+StepInstruction+"§\t"+Eval+"§\t"+Branch+"§";
 
    StackFor.Add(nl);
-   StackFor_U.Add(StepCondition);
+   StackFor_U.Add(StepInstruction);
    return ReplaceTo;
 }
 
@@ -1340,7 +1347,8 @@ function ParseCond(W: string)
    }
 
 	let Branch="";
-	let Eval="";
+   let Eval="";
+   let Eval1 = "";
 	let BranchNot="";
 
    if(W=="Z=1" || W=="ZERO" || W=="EQUAL")
@@ -1413,13 +1421,14 @@ function ParseCond(W: string)
    else if(W.AnsiPos("<") >0) { Operator = "<";  let G = GetToken(W, Operator); Register = G.Token; Operand = G.Rest; }
    else if(W.AnsiPos("IS")>0) { Operator = "IS"; let G = GetToken(W, Operator); Register = G.Token; Operand = G.Rest; }
 
+   Operand = Trim(Operand);
+
    Register = UpperCase(Trim(Register));
 
    if(cpu6502) 
    {
       if(Operator=="IS")
-      {
-         Operand = Trim(Operand);
+      {         
          if(usinga) Eval = "LDA "+Register+"§";
          if(usingx) Eval = "LDX "+Register+"§";
          if(usingy) Eval = "LDY "+Register+"§";
@@ -1436,9 +1445,9 @@ function ParseCond(W: string)
          else if(Register=="Y") Eval = "CPY "+Operand;
          else
          {
-            if(usinga) Eval = "LDA "+Register+"§\tCMP "+Operand;
-            if(usingx) Eval = "LDX "+Register+"§\tCPX "+Operand;
-            if(usingy) Eval = "LDY "+Register+"§\tCPY "+Operand;
+            if(usinga) { Eval = "LDA "+Register+"§"; Eval1 = "\tCMP "+Operand; }
+            if(usingx) { Eval = "LDX "+Register+"§"; Eval1 = "\tCPX "+Operand; }
+            if(usingy) { Eval = "LDY "+Register+"§"; Eval1 = "\tCPY "+Operand; }
          }
       }
    }
@@ -1482,19 +1491,27 @@ function ParseCond(W: string)
    
    if(cpu6502) 
    {
-           if(Operator=="!=") { Branch = "BNE *"; BranchNot = "BEQ *"; }
-      else if(Operator=="<>") { Branch = "BNE *"; BranchNot = "BEQ *"; }
-      else if(Operator=="==") { Branch = "BEQ *"; BranchNot = "BNE *"; }
-      else if(Operator=="=")  { Branch = "BEQ *"; BranchNot = "BNE *"; }
-      else if(Operator==">=" && signedcond==false) { Branch = "BCS *";           BranchNot = "BCC *"; }
+      let cmp_not_needed = false;
+
+           if(Operator=="!=") { Branch = "BNE *"; BranchNot = "BEQ *"; cmp_not_needed = true; }
+      else if(Operator=="<>") { Branch = "BNE *"; BranchNot = "BEQ *"; cmp_not_needed = true; }
+      else if(Operator=="==") { Branch = "BEQ *"; BranchNot = "BNE *"; cmp_not_needed = true; }
+      else if(Operator=="=")  { Branch = "BEQ *"; BranchNot = "BNE *"; cmp_not_needed = true; }
+      else if(Operator==">=" && signedcond==false) { Branch = "BCS *";           BranchNot = "BCC *";           }
       else if(Operator=="<=" && signedcond==false) { Branch = "BCC *§\tBEQ *";   BranchNot = "BEQ .+4§\tBCS *"; }
-      else if(Operator=="<"  && signedcond==false) { Branch = "BCC *";           BranchNot = "BCS *"; }
-      else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4\tBCS *";  BranchNot = "BCC *§\tBEQ *"; }
-      else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *"; }
-      else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *"; }
-      else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *"; }
-      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *"; }
+      else if(Operator=="<"  && signedcond==false) { Branch = "BCC *";           BranchNot = "BCS *";           }
+      else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4\tBCS *";  BranchNot = "BCC *§\tBEQ *";   }
+      else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *";             cmp_not_needed = true; }
+      else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *";   cmp_not_needed = true; }
+      else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *";             cmp_not_needed = true; }
+      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *";   }
       else Operator = "#";
+
+      if(Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") 
+      {
+         Eval1 = `§#IF ${RemoveHash(Operand)} <> 0§${Eval1}§#ENDIF§`;
+      }
+      Eval = Eval + Eval1;
    }
    else if(cpuz80) 
    {
