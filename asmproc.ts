@@ -636,6 +636,9 @@ function ProcessFile()
       let ReplaceTo = IsMacroCall(Dummy, t);
       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
    }
+
+   // change § into newlines (needed for macros)   
+   L.SetText(L.Text().replace(/§/g, "\n"));   
    
    // scan for repeat ... until then
    for(t=0; t<L.Count; t++)

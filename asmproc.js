@@ -463,6 +463,8 @@ function ProcessFile() {
         if (ReplaceTo !== undefined)
             L.Strings[t] = ReplaceTo;
     }
+    // change § into newlines (needed for macros)   
+    L.SetText(L.Text().replace(/§/g, "\n"));
     // scan for repeat ... until then
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
@@ -745,7 +747,7 @@ function IsREPEAT(Linea, nl) {
     return ReplaceTo;
 }
 function IsSelfModLabel(Linea, nl) {
-    var R = new RegExp(/^(.*)\*([a-zA-Z]+[a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+    var R = new RegExp(/^(.*)\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
     var match = R.exec(Linea);
     if (match !== null) {
         var all = match[0], leftside = match[1], varname = match[2], varparm = match[3], rightside = match[4];
