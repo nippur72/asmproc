@@ -525,6 +525,17 @@ function IsReservedKeywords(Linea: string, nl: number): string|undefined
          let ReplaceTo = " " + Linea;
          return ReplaceTo;
       }
+      else if(ca65) 
+      {
+         Linea = Linea.replace("#IFDEF",".IFDEF");
+         Linea = Linea.replace("#IFNDEF",".IFNDEF");
+         Linea = Linea.replace("#IF",".IF");
+         Linea = Linea.replace("#ELSE",".ELSE");
+         Linea = Linea.replace("#ENDIF",".ENDIF");
+         //Linea = Linea.replace("#INCLUDE","INCLUDE");
+         let ReplaceTo = " " + Linea;
+         return ReplaceTo;
+      }
    }   
    return undefined;
 }
