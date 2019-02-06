@@ -389,6 +389,18 @@ function main()
    process.exit(0);
 }
 
+/*
+function GlobalConstants() {
+   let Linea = L.Strings[0];
+
+   if(dasm) {
+      Linea = "DASM EQU 1§"+Linea;
+   }
+   else if(ca65) {
+      Linea = "DEFINE CA65 1§"+Linea;
+   }
+}
+*/
 
 function RemoveComments()
 {
@@ -434,6 +446,27 @@ function RemoveComments()
       if(match !== null) {
          const [all, purged, comment] = match;
          L.Strings[t] = purged;     
+      }
+   }
+}
+
+function ModOperator()
+{
+   // transform MOD   
+   for(let t=0; t<L.Count; t++) 
+   {
+      while(true)
+      {
+         const R = new RegExp(/(.*)\sMOD\s(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+         const Linea = L.Strings[t];      
+         const match = R.exec(Linea);
+         if(match !== null) {         
+            const [all, left, right] = match;         
+            if(dasm)   L.Strings[t] = left + " % " + right;     
+            if(ca65)   L.Strings[t] = left + " .MOD " + right;  
+            if(z80asm) L.Strings[t] = left + " % " + right;        
+         }
+         else break;
       }
    }
 }
@@ -556,6 +589,8 @@ function ProcessFile()
       let hasinclude = ResolveInclude();
       if(!hasinclude) break;
    }
+
+   ModOperator();
 
    RemoveSemicolon();
 
@@ -921,7 +956,7 @@ function IsREPEAT(Linea: string, nl: number): string | undefined
 
 function IsSelfModLabel(Linea: string, nl: number): string | undefined
 {   
-   let R = new RegExp(/^(.*)\*([a-zA-Z]+[a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+   let R = new RegExp(/^(.*)\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
    let match = R.exec(Linea);
    if(match !== null) {            
       const [all, leftside, varname, varparm, rightside] = match;      
@@ -1185,11 +1220,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    if(Register=="X")
    {
       StartIstruction = "LDX "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#2")  { StepInstruction = "\tinx§\tinx";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinx§\tinx§\tinx";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinx§\tinx§\tinx§\tinx";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#-2") { StepInstruction = "\tdex§\tdex";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdex§\tdex§\tdexx";       StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdex§\tdex§\tdex§\tdexx"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1201,11 +1236,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else if(Register=="Y")
    {
       StartIstruction = "LDY "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tiny";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tiny";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#2")  { StepInstruction = "\tiny§\tiny";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tiny§\tiny§\tiny";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tiny§\tiny§\tiny§\tiny";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#-2") { StepInstruction = "\tdey§\tdey";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdey§\tdey§\tdey";        StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdey§\tdey§\tdey§\tdey";  StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1217,11 +1252,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else if(Register=="A")
    {
       StartIstruction = "LDA "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tclc§\tadc #1";   StringaEnd = Register + "="  + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tclc§\tadc #1";   StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#2")  { StepInstruction = "\tclc§\tadc #2";   StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tclc§\tadc #3";   StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tclc§\tadc #4";   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "=" + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#-2") { StepInstruction = "\tclc§\tadc #254"; StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tclc§\tadc #253"; StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tclc§\tadc #252"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1233,11 +1268,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else
    {
       StartIstruction = "LDA "+StartValue+"§\tSTA "+Register;
-           if(Step=="#1")  { StepInstruction = "\tinc "+Register;                                                            StringaEnd = Register + "="  + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tinc "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#2")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register;                                         StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;                      StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "="  + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + ""; }
       else if(Step=="#-2") { StepInstruction = "\tdec "+Register+"§\tdec "+Register;                                         StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;                      StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;   StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1812,12 +1847,34 @@ function IsMACRO(Linea: string, nl: number): string | undefined
 
    let ReplaceTo = "   mac "+NM;
 
+   let Code = "";
+
+   // new self extracting MACRO
+   if(true) {
+      let end_macro_found = false;
+      for(let t=nl+1; t<L.Count; t++) {
+         const Linea = L.Strings[t];
+         if(IsENDMACRO(Linea, t) !== undefined) {
+            L.Strings[t] = "";
+            ReplaceTo = "";
+            end_macro_found = true;
+            break;   
+         }
+         else
+         {
+            Code += Linea + "§";
+            L.Strings[t] = "";
+         }
+      }
+      if(!end_macro_found) error(`end macro not found for ${NM}`);
+   }
+
    // inserisce macro   
    AllMacros.push({ 
       Name: NomeMacro, 
       Id: NM, 
       Parameters: PList, 
-      Code: "" 
+      Code 
    });
 
    return ReplaceTo;
@@ -1855,11 +1912,14 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
    let prm = Linea + ",";
    let orig = Linea;
    let list: string[] = [];
+   let actualparms: string[] = [];
+
    for(;;)
    {              
       G = GetToken(prm, ","); let p = Trim(G.Token); prm = G.Rest;      
       if(p == "") break;
-           if(p.startsWith("#")) list.push("CONST");
+      actualparms.push(p);
+      if(p.startsWith("#")) list.push("CONST");
       else if(p.startsWith("(") && p.endsWith(")")) list.push("INDIRECT");
       else       
            //if(p.startsWith('"') && p.endsWith('"')) list.push(p);
@@ -1874,6 +1934,24 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
 
    const foundMacro = matching[0];
    let ReplaceTo = `   ${foundMacro.Id} ${orig}`;   
+
+   // new self extracting macro
+   if(true)
+   {      
+      let code = foundMacro.Code;      
+      for(let t=0; t<actualparms.length; t++) {
+         // replace parameters
+         const pattern = `\\{${t+1}\\}`;
+         const R = new RegExp(pattern, "gmi");
+         const param = RemoveHash(actualparms[t]);
+         code = code.replace(R, param);
+
+         // replace local labels in macro code                           
+         code = code.replace(/\local_label/gmi, Label("LOCAL", nl, "LABEL"));
+      }
+      ReplaceTo = code;
+   }
+
    return ReplaceTo;
 }
 

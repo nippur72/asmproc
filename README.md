@@ -310,8 +310,10 @@ end macro
 - `indirect` - pointer deference (6502's indirect mode, enclosed in ())
 - `"quoted value"` - a register value enclosed in quotes ("A", "X", "Y")
 
-When defining the body of the macro parameters can be referenced
-with `{1}`, `{2}`, ...
+When defining the body of the macro:
+
+- parameters can be referenced with `{1}`, `{2}`, 
+- local labels can be referenced with the prefix `LOCAL_LABEL`
 
 Macros are polymorhpic, that is, more macros with the same name 
 but with different parameter specification can be defined.
@@ -332,6 +334,22 @@ macro ldx indirect, "a"
 end macro
 
 ldx ($ff), a
+
+macro loop_forever 
+local_label_loop:
+   jmp local_label_loop
+end macro
+
+```
+
+## MOD OPERATOR
+
+`MOD` can be used as modulus operator that can be recognizable by all assembler targets.
+
+Example:
+
+```
+  lda #(foo MOD 256)
 ```
 
 ## INLINE BASIC

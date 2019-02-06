@@ -256,6 +256,18 @@ function main() {
     console.log("asmproc OK, created: \"" + FOut + "\"");
     process.exit(0);
 }
+/*
+function GlobalConstants() {
+   let Linea = L.Strings[0];
+
+   if(dasm) {
+      Linea = "DASM EQU 1§"+Linea;
+   }
+   else if(ca65) {
+      Linea = "DEFINE CA65 1§"+Linea;
+   }
+}
+*/
 function RemoveComments() {
     // remove C comments
     var Whole = L.Text();
@@ -293,6 +305,27 @@ function RemoveComments() {
         if (match !== null) {
             var all = match[0], purged = match[1], comment = match[2];
             L.Strings[t] = purged;
+        }
+    }
+}
+function ModOperator() {
+    // transform MOD   
+    for (var t = 0; t < L.Count; t++) {
+        while (true) {
+            var R = new RegExp(/(.*)\sMOD\s(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+            var Linea = L.Strings[t];
+            var match = R.exec(Linea);
+            if (match !== null) {
+                var all = match[0], left = match[1], right = match[2];
+                if (dasm)
+                    L.Strings[t] = left + " % " + right;
+                if (ca65)
+                    L.Strings[t] = left + " .MOD " + right;
+                if (z80asm)
+                    L.Strings[t] = left + " % " + right;
+            }
+            else
+                break;
         }
     }
 }
@@ -391,6 +424,7 @@ function ProcessFile() {
         if (!hasinclude)
             break;
     }
+    ModOperator();
     RemoveSemicolon();
     MakeAllUpperCase();
     // substitute DASM IF THEN on single line
@@ -944,7 +978,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDX " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tinx";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#2") {
             StepInstruction = "\tinx§\tinx";
@@ -960,7 +994,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdex";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdex§\tdex";
@@ -982,7 +1016,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDY " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tiny";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#2") {
             StepInstruction = "\tiny§\tiny";
@@ -998,7 +1032,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdey";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdey§\tdey";
@@ -1020,7 +1054,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDA " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tclc§\tadc #1";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#2") {
             StepInstruction = "\tclc§\tadc #2";
@@ -1036,7 +1070,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tclc§\tadc #255";
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tclc§\tadc #254";
@@ -1058,7 +1092,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDA " + StartValue + "§\tSTA " + Register;
         if (Step == "#1") {
             StepInstruction = "\tinc " + Register;
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#2") {
             StepInstruction = "\tinc " + Register + "§\tinc " + Register;
@@ -1074,7 +1108,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdec " + Register;
-            StringaEnd = Register + "=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdec " + Register + "§\tdec " + Register;
@@ -1420,6 +1454,7 @@ function ParseCond(W) {
         else if (Operator == ">" && signedcond == true) {
             Branch = "BEQ .+4\tBPL *";
             BranchNot = "BMI *§\tBEQ *";
+            cmp_not_needed = true;
         }
         else
             Operator = "#";
@@ -1705,12 +1740,32 @@ function IsMACRO(Linea, nl) {
         error(msg);
     }
     var ReplaceTo = "   mac " + NM;
+    var Code = "";
+    // new self extracting MACRO
+    if (true) {
+        var end_macro_found = false;
+        for (var t = nl + 1; t < L.Count; t++) {
+            var Linea_1 = L.Strings[t];
+            if (IsENDMACRO(Linea_1, t) !== undefined) {
+                L.Strings[t] = "";
+                ReplaceTo = "";
+                end_macro_found = true;
+                break;
+            }
+            else {
+                Code += Linea_1 + "§";
+                L.Strings[t] = "";
+            }
+        }
+        if (!end_macro_found)
+            error("end macro not found for " + NM);
+    }
     // inserisce macro   
     AllMacros.push({
         Name: NomeMacro,
         Id: NM,
         Parameters: PList,
-        Code: ""
+        Code: Code
     });
     return ReplaceTo;
 }
@@ -1740,12 +1795,14 @@ function IsMacroCall(Linea, nl) {
     var prm = Linea + ",";
     var orig = Linea;
     var list = [];
+    var actualparms = [];
     for (;;) {
         G = GetToken(prm, ",");
         var p = Trim(G.Token);
         prm = G.Rest;
         if (p == "")
             break;
+        actualparms.push(p);
         if (p.startsWith("#"))
             list.push("CONST");
         else if (p.startsWith("(") && p.endsWith(")"))
@@ -1764,6 +1821,20 @@ function IsMacroCall(Linea, nl) {
         error("more than on macro matching \"" + NomeMacro + "\"");
     var foundMacro = matching[0];
     var ReplaceTo = "   " + foundMacro.Id + " " + orig;
+    // new self extracting macro
+    if (true) {
+        var code = foundMacro.Code;
+        for (var t = 0; t < actualparms.length; t++) {
+            // replace parameters
+            var pattern = "\\{" + (t + 1) + "\\}";
+            var R = new RegExp(pattern, "gmi");
+            var param = RemoveHash(actualparms[t]);
+            code = code.replace(R, param);
+            // replace local labels in macro code                           
+            code = code.replace(/\local_label/gmi, Label("LOCAL", nl, "LABEL"));
+        }
+        ReplaceTo = code;
+    }
     return ReplaceTo;
 }
 function IsSUB(Linea, nl) {
