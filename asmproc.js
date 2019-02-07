@@ -980,7 +980,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDX " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tinx";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "+1";
         }
         else if (Step == "#2") {
             StepInstruction = "\tinx§\tinx";
@@ -996,7 +996,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdex";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdex§\tdex";
@@ -1018,7 +1018,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDY " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tiny";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "+1";
         }
         else if (Step == "#2") {
             StepInstruction = "\tiny§\tiny";
@@ -1034,7 +1034,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdey";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdey§\tdey";
@@ -1056,7 +1056,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDA " + StartValue;
         if (Step == "#1") {
             StepInstruction = "\tclc§\tadc #1";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "+1";
         }
         else if (Step == "#2") {
             StepInstruction = "\tclc§\tadc #2";
@@ -1072,7 +1072,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tclc§\tadc #255";
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tclc§\tadc #254";
@@ -1094,7 +1094,7 @@ function IsFOR(Linea, nl) {
         StartIstruction = "LDA " + StartValue + "§\tSTA " + Register;
         if (Step == "#1") {
             StepInstruction = "\tinc " + Register;
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "+1";
         }
         else if (Step == "#2") {
             StepInstruction = "\tinc " + Register + "§\tinc " + Register;
@@ -1110,7 +1110,7 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdec " + Register;
-            StringaEnd = Register + "!=" + StringaEnd + "";
+            StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdec " + Register + "§\tdec " + Register;

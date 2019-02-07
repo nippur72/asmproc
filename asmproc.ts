@@ -1223,11 +1223,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    if(Register=="X")
    {
       StartIstruction = "LDX "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "!=" + StringaEnd + "+1"; }
       else if(Step=="#2")  { StepInstruction = "\tinx§\tinx";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinx§\tinx§\tinx";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinx§\tinx§\tinx§\tinx";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "!=" + StringaEnd + "-1"; }
       else if(Step=="#-2") { StepInstruction = "\tdex§\tdex";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdex§\tdex§\tdexx";       StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdex§\tdex§\tdex§\tdexx"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1239,11 +1239,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else if(Register=="Y")
    {
       StartIstruction = "LDY "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tiny";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tiny";                    StringaEnd = Register + "!=" + StringaEnd + "+1"; }
       else if(Step=="#2")  { StepInstruction = "\tiny§\tiny";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tiny§\tiny§\tiny";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tiny§\tiny§\tiny§\tiny";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "!=" + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "!=" + StringaEnd + "-1"; }
       else if(Step=="#-2") { StepInstruction = "\tdey§\tdey";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdey§\tdey§\tdey";        StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdey§\tdey§\tdey§\tdey";  StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1255,11 +1255,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else if(Register=="A")
    {
       StartIstruction = "LDA "+StartValue;
-           if(Step=="#1")  { StepInstruction = "\tclc§\tadc #1";   StringaEnd = Register + "!=" + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tclc§\tadc #1";   StringaEnd = Register + "!=" + StringaEnd + "+1"; }
       else if(Step=="#2")  { StepInstruction = "\tclc§\tadc #2";   StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tclc§\tadc #3";   StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tclc§\tadc #4";   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "!=" + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "!=" + StringaEnd + "-1"; }
       else if(Step=="#-2") { StepInstruction = "\tclc§\tadc #254"; StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tclc§\tadc #253"; StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tclc§\tadc #252"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1271,11 +1271,11 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    else
    {
       StartIstruction = "LDA "+StartValue+"§\tSTA "+Register;
-           if(Step=="#1")  { StepInstruction = "\tinc "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + ""; }
+           if(Step=="#1")  { StepInstruction = "\tinc "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + "+1"; }
       else if(Step=="#2")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register;                                         StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;                      StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + ""; }
+      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + "-1"; }
       else if(Step=="#-2") { StepInstruction = "\tdec "+Register+"§\tdec "+Register;                                         StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;                      StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;   StringaEnd = Register + ">=" + StringaEnd + "-4"; }
