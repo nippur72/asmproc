@@ -1615,11 +1615,11 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
      for(let t=1,pos=6;t<=4;t++,pos-=2)
      {
         let c = Argomento.CharAt(t);
-        let code=0;
-
-        if(c=='1' || c=='A') code = 1;
-        if(c=='2' || c=='B') code = 2;
-        if(c=='3' || c=='F') code = 3;
+        let code = 0b00;
+        
+        if(c=='1' || c=='B') code = 0b01;
+        if(c=='2' || c=='F') code = 0b10;
+        if(c=='3' || c=='A') code = 0b11;
 
         byteval = byteval | (code<<pos);
      }

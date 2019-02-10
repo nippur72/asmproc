@@ -358,8 +358,8 @@ function IsIdentifier(s) {
         return false;
     return true;
 }
-function RemoveSemicolon() {
-    // remove : semicolon
+function RemoveColon() {
+    // remove : colon
     for (var t = 0; t < L.Count; t++) {
         while (true) {
             var Linea = L.Strings[t];
@@ -433,7 +433,7 @@ function ProcessFile() {
         // if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;        
     }
     ModOperator();
-    RemoveSemicolon();
+    RemoveColon();
     MakeAllUpperCase();
     // substitute DASM IF THEN on single line
     for (t = 0; t < L.Count; t++) {
@@ -1547,11 +1547,11 @@ function IsBitmap(Linea, nl) {
         for (var t = 1, pos = 6; t <= 4; t++, pos -= 2) {
             var c = Argomento.CharAt(t);
             var code = 0;
-            if (c == '1' || c == 'A')
+            if (c == '1' || c == 'B')
                 code = 1;
-            if (c == '2' || c == 'B')
+            if (c == '2' || c == 'F')
                 code = 2;
-            if (c == '3' || c == 'F')
+            if (c == '3' || c == 'A')
                 code = 3;
             byteval = byteval | (code << pos);
         }

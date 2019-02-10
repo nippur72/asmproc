@@ -163,7 +163,7 @@ next
 ```
 
 - `<register>` can be `A`,`X`,`Y` or a memory location.
-- `<start>` can be a costant or memory location.
+- `<start>` can be a constant or memory location.
 - `<end>` is a fixed constant
 - `<step>` constant from `#-4` to `#4` (because internally it's translated with `INC`s and `DEC`s).
 
@@ -245,7 +245,7 @@ SUB mysub()
 END SUB
 ```
 
-## BITMAP CHARACTER COSTANTS
+## BITMAP CHARACTER CONSTANTS
 
 Define bitmap values, e.g. for sprite or character redefinition.
 
@@ -262,9 +262,9 @@ For single-color `<code>` is 8-character wide
 For multicolor `<code>` is 4-character wide
 ```
 - "." or "-" or "0" equals to bits 00  background color
-- "A" or "1"        equals to bits 01  border color
-- "B" or "2"        equals to bits 10  foreground color
-- "F" or "3"        equals to bits 11  auxiliary color (36878's high nibble)
+- "B" or "1"        equals to bits 01  border color
+- "F" or "2"        equals to bits 10  foreground color
+- "A" or "3"        equals to bits 11  auxiliary color (36878's high nibble)
 ```
 
 Example: 
@@ -279,9 +279,9 @@ Example:
   bitmap  ........
 ```
 
-## FLOATING POINT COSTANTS
+## FLOATING POINT CONSTANTS
 
-Defines a floating point costant in CBM format (5 bytes).
+Defines a floating point constant in CBM format (5 bytes).
 
 ```
 [label] float value[,value...]
@@ -302,7 +302,7 @@ end macro
 
 `<parameter>` can be:
 
-- `const` - meaning a costant value (6502's immediate mode '#')
+- `const` - meaning a constant value (6502's immediate mode '#')
 - `mem` - meaning a memory location (6502's absolute or zero page mode)
 - `indirect` - pointer deference (6502's indirect mode, enclosed in ())
 - `"quoted value"` - a register value enclosed in quotes ("A", "X", "Y")
@@ -327,7 +327,7 @@ poke 32768, #128
 macro ldx indirect, "a"
    tay
    lda ({1}), y
-   txa   
+   tax   
 end macro
 
 ldx ($ff), a
