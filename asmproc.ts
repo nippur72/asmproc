@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// TODO self extracting macros
+// TODO DIV, HIBYTE, LOBYTE functions
 // TODO ' hypen comments?
 // TODO "/*" comments when in quoted text
 // TODO JMP simulate BRA branch always
@@ -27,8 +27,6 @@
 // TODO basic tokenizer: alternate names (wht -> white)
 // TODO basic tokenizer: {rev shift} ?
 // TODO basic tokenizer: {cbm } shortcuts
-
-
 // TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
 
 /*
