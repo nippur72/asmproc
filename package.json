@@ -7,7 +7,8 @@
    "asmproc": "./asmproc.js"   
   },  
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node asmproc -i test/repeat.lm -o test/repeat.out"
   },
   "author": "Antonino Porcino <nino.porcino@gmail.com>",
   "license": "MIT",

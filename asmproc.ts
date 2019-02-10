@@ -23,6 +23,11 @@
 // TODO macro fix literal value call
 // TODO bitmap for c64 sprites
 // TODO cc65
+// TODO basic tokenizer: c64 colors
+// TODO basic tokenizer: alternate names (wht -> white)
+// TODO basic tokenizer: {rev shift} ?
+// TODO basic tokenizer: {cbm } shortcuts
+
 
 // TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
 
@@ -249,8 +254,10 @@ let AllMacros: Macro[] = [];
 let basic_row: number;
 let BasicCompact: boolean;
 
-let Tokens: string[] = []; // 256
-let Ascii:  string[] = []; // 256
+let TokensKeywords: {[key: string]: number} = {}; 
+let TokensText: {[key: string]: number} = {}; 
+
+let Ascii: {[key: string]: number} = {}; 
 
 let Ferr: string;
 
@@ -590,6 +597,15 @@ function ProcessFile()
       if(!hasinclude) break;
    }
 
+   // scan for basic, needs to be done first before of semicolon replacement
+   for(t=0;t<L.Count;t++)
+   {
+    	let Dummy = L.Strings[t];                
+      let ReplaceTo = IsBasic(Dummy, t);
+      // IsBasic does replace by itself
+    	// if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;        
+   }
+   
    ModOperator();
 
    RemoveSemicolon();
@@ -665,15 +681,6 @@ function ProcessFile()
    }
 
    if(!StackDo.IsEmpty) error("DO without LOOP");
-
-   // scan for basic
-   for(t=0;t<L.Count;t++)
-   {
-    	let Dummy = L.Strings[t];                
-      let ReplaceTo = IsBasic(Dummy, t);
-      // IsBasic does replace by itself
-    	// if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;        
-   }
 
    // scan for while ... wend then
    for(t=0;t<L.Count;t++)
@@ -2062,7 +2069,7 @@ function IsBasic(Linea: string, nl: number): boolean
          {
             if(si==-1)
             {
-               error("BASIC line continuing from no line number");
+               error(`BASIC line continuing from no line number in line ${t}`);
                break;
             }
             L.Strings[si] = `${L.Strings[si].trim()}:${Linx}`;  // \r is here
@@ -2099,7 +2106,7 @@ function StartWithNumber(Linea: string): boolean
    try
    {
       numlin = LineNumber.ToInt();      
-      if(numlin==0 || isNaN(numlin)) return false;
+      if(numlin<0 || isNaN(numlin)) return false;
    }
    catch(ex)
    {
@@ -2108,10 +2115,151 @@ function StartWithNumber(Linea: string): boolean
    return true;
 }
 
+function MatchToken(Linea: string, inquote: boolean, inrem: boolean)
+{
+   let keywords = Object.keys(TokensKeywords);
+
+   for(let t=0; t<keywords.length; t++)
+   {  
+      let keyword = keywords[t];          
+      let index = TokensKeywords[keyword];            
+      let l = keyword.Length();            
+      if(l>0 && Linea.SubString(1,l) === keyword)
+      {
+         // console.log(`matched token: ${Tokens[t]}`);
+         Linea = Linea.SubString(l+1);               
+         let Matched = `${index},`;
+
+         // REM or DATA
+         if(index==143||index==131) inrem = true;         
+         
+         return { Matched, Linea, inquote, inrem };
+      }
+   }         
+
+   return undefined;
+}
+
+function MatchTextToken(Linea: string, inquote: boolean, inrem: boolean)
+{
+   // match text
+   let keys = Object.keys(TokensText);
+   for(let t=0; t<keys.length; t++)
+   {  
+      let text = keys[t];          
+      let index = TokensText[text];
+      let l = text.Length();            
+      if(l>0 && Linea.SubString(1,l) === text)
+      {
+         // console.log(`matched text: ${Tokens[t]}`);
+         Linea = Linea.SubString(l+1);               
+         let Matched = "";
+         if(!(BasicCompact==true && index==32))
+         {
+            Matched = `${index},`;
+         }         
+         if(index==34) inquote = true;
+
+         return { Matched, Linea, inquote, inrem };
+      }
+   }
+
+   return undefined;
+}
+
+function MatchSymbol(Linea: string, inquote: boolean, inrem: boolean)
+{
+   // match reference to symbol {symbol}, rendered as a 4 character basic number
+   if(Linea.SubString(1,1)=="{")
+   {
+      let x = Linea.AnsiPos("}");
+      if(x>0)
+      {
+         let Symbol = Linea.SubString(2,x-2);
+         Linea = Linea.SubString(x+1);
+         let prima_cifra   = "[["  + mod(Symbol,    "10") + "] + $30]";
+         let seconda_cifra = "[[[" + mod(Symbol,   "100") + "-[" + mod(Symbol,"10")   +"]]/10] + $30]";
+         let terza_cifra   = "[[[" + mod(Symbol,  "1000") + "-[" + mod(Symbol,"100")  +"]]/100] + $30]";
+         let quarta_cifra  = "[[[" + mod(Symbol, "10000") + "-[" + mod(Symbol,"1000") +"]]/1000] + $30]";
+         let quinta_cifra  = "[[[" + mod(Symbol,"100000") + "-[" + mod(Symbol,"10000")+"]]/10000] + $30]";
+
+         let Matched = quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
+
+         return { Matched, Linea, inquote, inrem };
+      }
+   }      
+
+   return undefined;
+}
+
+function MatchQuote(Linea: string, inquote: boolean, inrem: boolean)
+{
+   if(inquote)
+   {
+      let codes = Object.keys(Ascii);
+      for(let j=0;j<codes.length;j++)
+      {
+         let code = codes[j];
+         let t = Ascii[code];
+         let l = code.Length();
+        
+         if(l>0 && Linea.SubString(1,l)==UpperCase(code))
+         {
+            // console.log(`matched string text: ${Ascii[t]}`);
+            Linea = Linea.SubString(l+1);
+            let Matched = `${t},`;
+            if(t==34) inquote = false;
+
+            return { Matched, Linea, inquote, inrem };
+         }
+      }
+   }
+
+   return undefined;
+}
+
+function MatchRem(Linea: string, inquote: boolean, inrem: boolean)
+{
+   // within rem, matches to the end of line
+   if(inrem)
+   {
+      // console.log("we are in rem");
+      let codes = Object.keys(Ascii);
+      for(let j=0;j<=codes.length;j++)
+      {
+         let code = codes[j];
+         let t = Ascii[code];
+         let l = code.Length();
+         if(l>0 && Linea.SubString(1,l)==UpperCase(code))
+         {
+            // console.log(`matched REM text: ${Ascii[t]}`);
+            Linea = Linea.SubString(l+1);
+            let Matched = `${t},`;
+            return { Matched, Linea, inquote, inrem };
+         }
+      }
+   }
+
+   return undefined;
+}
+
 function TranslateBasic(Linea: string): string
 {
+   function advance(match: {Matched: string, Linea: string, inquote: boolean, inrem: boolean}|undefined) {
+      if(match !== undefined) {
+         Compr += match.Matched;
+         Linea = match.Linea
+         inquote = match.inquote;
+         inrem = match.inrem;  
+         return true;          
+      }
+      return false;
+   }
+
    // skip empty lines
    if(Trim(Linea)=="") return "";
+
+   Linea = UpperCase(Linea); // TODO remove uppercase
 
    let G = GetToken(Linea," "); Linea = G.Rest;
    let LineNumber = Trim(G.Token);
@@ -2128,116 +2276,43 @@ function TranslateBasic(Linea: string): string
 
    for(;;)
    {
-      let break_next_token = false;
-
-      if(Linea=="") break;
+      if(Linea=="") break;      
 
       if(!inquote && !inrem)
       {
-         // match a token
-         for(let t=128; t<=255; t++)
-         {            
-            let l = Tokens[t].Length();
-            if(l>0 && Linea.SubString(1,l)==Tokens[t])
+         let match = MatchToken(Linea, inquote, inrem);
+         if(!advance(match))         
+         {
+            const match = MatchTextToken(Linea, inquote, inrem);
+            if(!advance(match))         
             {
-               // console.log(`matched token: ${Tokens[t]}`);
-               Linea = Linea.SubString(l+1,Linea.Length());               
-               Compr = Compr + `${t},`;
-               if(t==143||t==131) inrem = true;
-               break_next_token = true;
-               break;
-            }
-         }
-         if(break_next_token) continue;
-
-         // match text
-         for(let t=32; t<=95; t++)
-         {                        
-            let l = Tokens[t].Length();
-            if(l>0 && Linea.SubString(1,l)==Tokens[t])
-            {
-               // console.log(`matched text: ${Tokens[t]}`);
-               Linea = Linea.SubString(l+1,Linea.Length());
-               if(!(BasicCompact==true && t==32))
+               const match = MatchSymbol(Linea, inquote, inrem);
+               if(!advance(match))         
                {
-                  Compr = Compr + `${t},`;
-               }
-               if(t==34) inquote = true;
-               break_next_token = true;
-               break;
+                  console.log(`unrecognized keyword token: ${Linea}`);
+                  error(`unrecognized keyword token: ${Linea}`);
+               }      
             }
-         }
-         if(break_next_token) continue;
-
-         // match reference to symbol {symbol}, rendered as a 4 character basic number
-         if(Linea.SubString(1,1)=="{")
-         {
-            let x = Linea.AnsiPos("}");
-            if(x>0)
-            {
-               let Symbol = Linea.SubString(2,x-2);
-               Linea = Linea.SubString(x+1,Linea.Length());
-               let prima_cifra   = "[["  + mod(Symbol,    "10") + "] + $30]";
-               let seconda_cifra = "[[[" + mod(Symbol,   "100") + "-[" + mod(Symbol,"10")   +"]]/10] + $30]";
-               let terza_cifra   = "[[[" + mod(Symbol,  "1000") + "-[" + mod(Symbol,"100")  +"]]/100] + $30]";
-               let quarta_cifra  = "[[[" + mod(Symbol, "10000") + "-[" + mod(Symbol,"1000") +"]]/1000] + $30]";
-               let quinta_cifra  = "[[[" + mod(Symbol,"100000") + "-[" + mod(Symbol,"10000")+"]]/10000] + $30]";
-               Compr = Compr + quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
-               break_next_token = true;
-               // break nexttoken;
-            }
-         }
-         else 
-         {
-            console.log(`unrecognized keyword token: ${Linea}`);
-            error(`unrecognized keyword token: ${Linea}`);
          }
       }
-
-      if(break_next_token) continue;
-
-      // within quote, matches everything to next quote (")
-      if(inquote)
-      {
-         for(let t=1;t<=255;t++)
+      else if(inquote) {
+         // within quote, matches everything to next quote (")
+         const match = MatchQuote(Linea, inquote, inrem);
+         if(!advance(match))
          {
-            let l = Ascii[t].Length();
-            if(l>0 && Linea.SubString(1,l)==UpperCase(Ascii[t]))
-            {
-               // console.log(`matched string text: ${Ascii[t]}`);
-               Linea = Linea.SubString(l+1,Linea.Length());
-               Compr = Compr + `${t},`;
-               if(t==34) inquote = false;
-               //break nexttoken;
-               break_next_token = true;
-               break;
-            }
+            console.log(`unrecognized quoted text token: ${Linea}`);
+            error("unrecognized quoted text token");
          }
-
-         if(break_next_token) continue;
-
-         console.log(`unrecognized quoted text token: ${Linea}`);
-         error("unrecognized quoted text token");
       }
-
-      // within rem, matches to the end of line
-      if(inrem)
-      {
-         for(let t=1;t<=255;t++)
+      else if(inrem) {
+         // inrem (or data)
+         const match = MatchRem(Linea, inquote, inrem);
+         if(!advance(match))
          {
-            let l = Ascii[t].Length();
-            if(l>0 && Linea.SubString(1,l)==UpperCase(Ascii[t]))
-            {
-               // console.log(`matched REM text: ${Ascii[t]}`);
-               Linea = Linea.SubString(l+1,Linea.Length());
-               Compr = Compr + `${t},`;
-               break_next_token = true;
-               break;
-            }
+            console.log(`unrecognized rem/data text token: ${Linea}`);
+            error("unrecognized rem/data text token");
          }
-         console.log(`unrecognized rem text token: ${Linea}`);
-         error("unrecognized rem text token");
-      }
+      }      
    }
 
    Compr = Compr + "0";
@@ -2259,6 +2334,149 @@ function TranslateBasic(Linea: string): string
 
 function InitTokens()
 {
+   TokensText[" "] = 32;
+   TokensText["!"] = 33;
+   TokensText["\x22"] = 34;
+   TokensText["#"] = 35;
+   TokensText["$"] = 36;
+   TokensText["%"] = 37;
+   TokensText["&"] = 38;
+   TokensText["'"] = 39;
+   TokensText["("] = 40;
+   TokensText[")"] = 41;
+   TokensText["*"] = 42;
+   TokensText["+"] = 43;
+   TokensText[","] = 44;
+   TokensText["-"] = 45;
+   TokensText["."] = 46;
+   TokensText["/"] = 47;
+   TokensText["0"] = 48;
+   TokensText["1"] = 49;
+   TokensText["2"] = 50;
+   TokensText["3"] = 51;
+   TokensText["4"] = 52;
+   TokensText["5"] = 53;
+   TokensText["6"] = 54;
+   TokensText["7"] = 55;
+   TokensText["8"] = 56;
+   TokensText["9"] = 57;
+   TokensText[":"] = 58;
+   TokensText[";"] = 59;
+   TokensText["<"] = 60;
+   TokensText["="] = 61;
+   TokensText[">"] = 62;
+   TokensText["?"] = 63;
+   TokensText["@"] = 64;
+   TokensText["A"] = 65;
+   TokensText["B"] = 66;
+   TokensText["C"] = 67;
+   TokensText["D"] = 68;
+   TokensText["E"] = 69;
+   TokensText["F"] = 70;
+   TokensText["G"] = 71;
+   TokensText["H"] = 72;
+   TokensText["I"] = 73;
+   TokensText["J"] = 74;
+   TokensText["K"] = 75;
+   TokensText["L"] = 76;
+   TokensText["M"] = 77;
+   TokensText["N"] = 78;
+   TokensText["O"] = 79;
+   TokensText["P"] = 80;
+   TokensText["Q"] = 81;
+   TokensText["R"] = 82;
+   TokensText["S"] = 83;
+   TokensText["T"] = 84;
+   TokensText["U"] = 85;
+   TokensText["V"] = 86;
+   TokensText["W"] = 87;
+   TokensText["X"] = 88;
+   TokensText["Y"] = 89;
+   TokensText["Z"] = 90;
+   TokensText["["] = 91;
+   TokensText["£"] = 92;
+   TokensText["]"] = 93;
+   TokensText["^"] = 94;
+   TokensText["{left arrow}"] = 95;
+
+   TokensKeywords["END"] = 128;
+   TokensKeywords["FOR"] = 129;
+   TokensKeywords["NEXT"] = 130;
+   TokensKeywords["DATA"] = 131;
+   TokensKeywords["INPUT#"] = 132;
+   TokensKeywords["INPUT"] = 133;
+   TokensKeywords["DIM"] = 134;
+   TokensKeywords["READ"] = 135;
+   TokensKeywords["LET"] = 136;
+   TokensKeywords["GOTO"] = 137;
+   TokensKeywords["RUN"] = 138;
+   TokensKeywords["IF"] = 139;
+   TokensKeywords["RESTORE"] = 140;
+   TokensKeywords["GOSUB"] = 141;
+   TokensKeywords["RETURN"] = 142;
+   TokensKeywords["REM"] = 143;
+   TokensKeywords["STOP"] = 144;
+   TokensKeywords["ON"] = 145;
+   TokensKeywords["WAIT"] = 146;
+   TokensKeywords["LOAD"] = 147;
+   TokensKeywords["SAVE"] = 148;
+   TokensKeywords["VERIFY"] = 149;
+   TokensKeywords["DEF"] = 150;
+   TokensKeywords["POKE"] = 151;
+   TokensKeywords["PRINT#"] = 152;
+   TokensKeywords["PRINT"] = 153;
+   TokensKeywords["CONT"] = 154;
+   TokensKeywords["LIST"] = 155;
+   TokensKeywords["CLR"] = 156;
+   TokensKeywords["CMD"] = 157;
+   TokensKeywords["SYS"] = 158;
+   TokensKeywords["OPEN"] = 159;
+   TokensKeywords["CLOSE"] = 160;
+   TokensKeywords["GET"] = 161;
+   TokensKeywords["NEW"] = 162;
+   TokensKeywords["TAB("] = 163;
+   TokensKeywords["TO"] = 164;
+   TokensKeywords["FN"] = 165;
+   TokensKeywords["SPC("] = 166;
+   TokensKeywords["THEN"] = 167;
+   TokensKeywords["NOT"] = 168;
+   TokensKeywords["STEP"] = 169;
+   TokensKeywords["+"] = 170;
+   TokensKeywords["-"] = 171;
+   TokensKeywords["*"] = 172;
+   TokensKeywords["/"] = 173;
+   TokensKeywords["^"] = 174;
+   TokensKeywords["AND"] = 175;
+   TokensKeywords["OR"] = 176;
+   TokensKeywords[">"] = 177;
+   TokensKeywords["="] = 178;
+   TokensKeywords["<"] = 179;
+   TokensKeywords["SGN"] = 180;
+   TokensKeywords["INT"] = 181;
+   TokensKeywords["ABS"] = 182;
+   TokensKeywords["USR"] = 183;
+   TokensKeywords["FRE"] = 184;
+   TokensKeywords["POS"] = 185;
+   TokensKeywords["SQR"] = 186;
+   TokensKeywords["RND"] = 187;
+   TokensKeywords["LOG"] = 188;
+   TokensKeywords["EXP"] = 189;
+   TokensKeywords["COS"] = 190;
+   TokensKeywords["SIN"] = 191;
+   TokensKeywords["TAN"] = 192;
+   TokensKeywords["ATN"] = 193;
+   TokensKeywords["PEEK"] = 194;
+   TokensKeywords["LEN"] = 195;
+   TokensKeywords["STR$"] = 196;
+   TokensKeywords["VAL"] = 197;
+   TokensKeywords["ASC"] = 198;
+   TokensKeywords["CHR$"] = 199;
+   TokensKeywords["LEFT$"] = 200;
+   TokensKeywords["RIGHT$"] = 201;
+   TokensKeywords["MID$"] = 202;   
+   TokensKeywords["{pi}"] = 255;
+
+/*
    Tokens[32] = " ";
    Tokens[33] = "!";
    Tokens[34] = "\x22";
@@ -2400,269 +2618,263 @@ function InitTokens()
    Tokens[202]= "MID$";
    for(let t=203;t<=254;t++) Tokens[t] = "";
    Tokens[255]= "{pi}";
-
-   Ascii[1]  = "{rev a}";
-   Ascii[2]  = "{rev b}";
-   Ascii[3]  = "{run stop}";
-   Ascii[4]  = "{rev d}";
-   Ascii[5]  = "{wht}";
-   Ascii[6]  = "{rev f}";
-   Ascii[7]  = "{rev g}";
-   Ascii[8]  = "{rev h}";
-   Ascii[9]  = "{rev i}";
-   Ascii[10] = "{rev j}";
-   Ascii[11] = "{rev k}";
-   Ascii[12] = "{rev l}";
-   Ascii[13] = "{return}";
-   Ascii[14] = "{rev n}";
-   Ascii[15] = "{rev o}";
-   Ascii[16] = "{rev p}";
-   Ascii[17] = "{down}";
-   Ascii[18] = "{rvs on}";
-   Ascii[19] = "{home}";
-   Ascii[20] = "{del}";
-   Ascii[21] = "{rev u}";
-   Ascii[22] = "{rev v}";
-   Ascii[23] = "{rev w}";
-   Ascii[24] = "{rev x}";
-   Ascii[25] = "{rev y}";
-   Ascii[26] = "{rev z}";
-   Ascii[27] = "{rev [}";
-   Ascii[28] = "{red}";
-   Ascii[29] = "{right}";
-   Ascii[30] = "{grn}";
-   Ascii[31] = "{blu}";
-   Ascii[32] = " ";
-   Ascii[33] = "!";
-   Ascii[34] = "\x22";
-   Ascii[35] = "#";
-   Ascii[36] = "$";
-   Ascii[37] = "%";
-   Ascii[38] = "&";
-   Ascii[39] = "'";
-   Ascii[40] = "(";
-   Ascii[41] = ")";
-   Ascii[42] = "*";
-   Ascii[43] = "+";
-   Ascii[44] = ",";
-   Ascii[45] = "-";
-   Ascii[46] = ".";
-   Ascii[47] = "/";
-   Ascii[48] = "0";
-   Ascii[49] = "1";
-   Ascii[50] = "2";
-   Ascii[51] = "3";
-   Ascii[52] = "4";
-   Ascii[53] = "5";
-   Ascii[54] = "6";
-   Ascii[55] = "7";
-   Ascii[56] = "8";
-   Ascii[57] = "9";
-   Ascii[58] = ":";
-   Ascii[59] = ";";
-   Ascii[60] = "<";
-   Ascii[61] = "=";
-   Ascii[62] = ">";
-   Ascii[63] = "?";
-   Ascii[64] = "@";
-   Ascii[65] = "A";
-   Ascii[66] = "B";
-   Ascii[67] = "C";
-   Ascii[68] = "D";
-   Ascii[69] = "E";
-   Ascii[70] = "F";
-   Ascii[71] = "G";
-   Ascii[72] = "H";
-   Ascii[73] = "I";
-   Ascii[74] = "J";
-   Ascii[75] = "K";
-   Ascii[76] = "L";
-   Ascii[77] = "M";
-   Ascii[78] = "N";
-   Ascii[79] = "O";
-   Ascii[80] = "P";
-   Ascii[81] = "Q";
-   Ascii[82] = "R";
-   Ascii[83] = "S";
-   Ascii[84] = "T";
-   Ascii[85] = "U";
-   Ascii[86] = "V";
-   Ascii[87] = "W";
-   Ascii[88] = "X";
-   Ascii[89] = "Y";
-   Ascii[90] = "Z";
-   Ascii[91] = "[";
-   Ascii[92] = "£";
-   Ascii[93] = "]";
-   Ascii[94] = "^";
-   Ascii[95] = "{left arrow}";
-   Ascii[96] = "{shift *}";
-   Ascii[97]  = "{shift a}";
-   Ascii[98]  = "{shift b}";
-   Ascii[99]  = "{shift c}";
-   Ascii[100] = "{shift d}";
-   Ascii[101] = "{shift e}";
-   Ascii[102] = "{shift f}";
-   Ascii[103] = "{shift g}";
-   Ascii[104] = "{shift h}";
-   Ascii[105] = "{shift i}";
-   Ascii[106] = "{shift j}";
-   Ascii[107] = "{shift k}";
-   Ascii[108] = "{shift l}";
-   Ascii[109] = "{shift m}";
-   Ascii[110] = "{shift n}";
-   Ascii[111] = "{shift o}";
-   Ascii[112] = "{shift p}";
-   Ascii[113] = "{shift q}";
-   Ascii[114] = "{shift r}";
-   Ascii[115] = "{shift s}";
-   Ascii[116] = "{shift t}";
-   Ascii[117] = "{shift u}";
-   Ascii[118] = "{shift v}";
-   Ascii[119] = "{shift w}";
-   Ascii[120] = "{shift x}";
-   Ascii[121] = "{shift y}";
-   Ascii[122] = "{shift z}";
-   Ascii[123] = "{shift +}";
-   Ascii[124] = "{cbm -}";
-   Ascii[125] = "{shift -}";
-   Ascii[126] = "{pi}";
-   Ascii[127] = "{cbm *}";
-   Ascii[128] = "{rev shift *}";
-   Ascii[129] = "{rev shift a}";
-   Ascii[130] = "{rev shift b}";
-   Ascii[131] = "{rev shift c}";
-   Ascii[132] = "{rev shift d}";
-   Ascii[133] = "{f1}";
-   Ascii[134] = "{f3}";
-   Ascii[135] = "{f5}";
-   Ascii[136] = "{f7}";
-   Ascii[137] = "{f2}";
-   Ascii[138] = "{f4}";
-   Ascii[139] = "{f6}";
-   Ascii[140] = "{f8}";
-   Ascii[141] = "{rev shift m}";
-   Ascii[142] = "{rev shift n}";
-   Ascii[143] = "{rev shift o}";
-   Ascii[144] = "{blk}";
-   Ascii[145] = "{up}";
-   Ascii[146] = "{rvs off}";
-   Ascii[147] = "{clr}";
-   Ascii[148] = "{inst}";
-   Ascii[149] = "{rev shift u}";
-   Ascii[150] = "{rev shift v}";
-   Ascii[151] = "{rev shift w}";
-   Ascii[152] = "{rev shift x}";
-   Ascii[153] = "{rev shift y}";
-   Ascii[154] = "{rev shift z}";
-   Ascii[155] = "{rev shift +}";
-   Ascii[156] = "{pur}";
-   Ascii[157] = "{left}";
-   Ascii[158] = "{yel}";
-   Ascii[159] = "{cyn}";
-   Ascii[160] = "{160}";
-   Ascii[161] = "{cbm k}";
-   Ascii[162] = "{cbm i}";
-   Ascii[163] = "{cbm t}";
-   Ascii[164] = "{cbm @}";
-   Ascii[165] = "{cbm g}";
-   Ascii[166] = "{cbm +}";
-   Ascii[167] = "{cbm m}";
-   Ascii[168] = "{cbm £}";
-   Ascii[169] = "{shift £}";
-   Ascii[170] = "{cbm n}";
-   Ascii[171] = "{cbm q}";
-   Ascii[172] = "{cbm d}";
-   Ascii[173] = "{cbm z}";
-   Ascii[174] = "{cbm s}";
-   Ascii[175] = "{cbm p}";
-   Ascii[176] = "{cbm a}";
-   Ascii[177] = "{cbm e}";
-   Ascii[178] = "{cbm r}";
-   Ascii[179] = "{cbm w}";
-   Ascii[180] = "{cbm h}";
-   Ascii[181] = "{cbm j}";
-   Ascii[182] = "{cbm l}";
-   Ascii[183] = "{cbm y}";
-   Ascii[184] = "{cbm u}";
-   Ascii[185] = "{cbm o}";
-   Ascii[186] = "{shift @}";
-   Ascii[187] = "{cbm f}";
-   Ascii[188] = "{cbm c}";
-   Ascii[189] = "{cbm x}";
-   Ascii[190] = "{cbm v}";
-   Ascii[191] = "{cbm b}";
-   Ascii[192] = "{shift *}";
-   Ascii[193] = "{shift a}";
-   Ascii[194] = "{shift b}";
-   Ascii[195] = "{shift c}";
-   Ascii[196] = "{shift d}";
-   Ascii[197] = "{shift e}";
-   Ascii[198] = "{shift f}";
-   Ascii[199] = "{shift g}";
-   Ascii[200] = "{shift h}";
-   Ascii[201] = "{shift i}";
-   Ascii[202] = "{shift j}";
-   Ascii[203] = "{shift k}";
-   Ascii[204] = "{shift l}";
-   Ascii[205] = "{shift m}";
-   Ascii[206] = "{shift n}";
-   Ascii[207] = "{shift o}";
-   Ascii[208] = "{shift p}";
-   Ascii[209] = "{shift q}";
-   Ascii[210] = "{shift r}";
-   Ascii[211] = "{shift s}";
-   Ascii[212] = "{shift t}";
-   Ascii[213] = "{shift u}";
-   Ascii[214] = "{shift v}";
-   Ascii[215] = "{shift w}";
-   Ascii[216] = "{shift x}";
-   Ascii[217] = "{shift y}";
-   Ascii[218] = "{shift z}";
-   Ascii[219] = "{shift +}";
-   Ascii[220] = "{cbm -}";
-   Ascii[221] = "{shift -}";
-   Ascii[222] = "{pi}";
-   Ascii[223] = "{cbm *}";
-   Ascii[224] = "{224}";
-   Ascii[225] = "{cbm k}";
-   Ascii[226] = "{cbm i}";
-   Ascii[227] = "{cbm t}";
-   Ascii[228] = "{cbm @}";
-   Ascii[229] = "{cbm g}";
-   Ascii[230] = "{cbm +}";
-   Ascii[231] = "{cbm m}";
-   Ascii[232] = "{cbm £}";
-   Ascii[233] = "{shift £}";
-   Ascii[234] = "{cbm n}";
-   Ascii[235] = "{cbm q}";
-   Ascii[236] = "{cbm d}";
-   Ascii[237] = "{cbm z}";
-   Ascii[238] = "{cbm s}";
-   Ascii[239] = "{cbm p}";
-   Ascii[240] = "{cbm a}";
-   Ascii[241] = "{cbm e}";
-   Ascii[242] = "{cbm r}";
-   Ascii[243] = "{cbm w}";
-   Ascii[244] = "{cbm h}";
-   Ascii[245] = "{cbm j}";
-   Ascii[246] = "{cbm l}";
-   Ascii[247] = "{cbm y}";
-   Ascii[248] = "{cbm u}";
-   Ascii[249] = "{cbm o}";
-   Ascii[250] = "{cbm @}";
-   Ascii[251] = "{cbm f}";
-   Ascii[252] = "{cbm c}";
-   Ascii[253] = "{cbm x}";
-   Ascii[254] = "{cbm v}";
-   Ascii[255] = "{pi}";
-}
-
-/*
-console.log("123".AnsiPos("23") == 2);
-console.log("123".AnsiPos("4") == 0);
-console.log("123".SubString(1,3) == "123");
-console.log("123".SubString(2,1) == "2");
 */
+
+   Ascii["{rev a}"] = 1;
+   Ascii["{rev b}"] = 2;
+   Ascii["{run stop}"] = 3;
+   Ascii["{rev d}"] = 4;
+   Ascii["{wht}"] = 5;    Ascii["{white}"] = 5;
+   Ascii["{rev f}"] = 6;
+   Ascii["{rev g}"] = 7;
+   Ascii["{rev h}"] = 8;
+   Ascii["{rev i}"] = 9;
+   Ascii["{rev j}"] = 10;
+   Ascii["{rev k}"] = 11;
+   Ascii["{rev l}"] = 12;
+   Ascii["{return}"] = 13;
+   Ascii["{rev n}"] = 14;
+   Ascii["{rev o}"] = 15;
+   Ascii["{rev p}"] = 16;
+   Ascii["{down}"] = 17;
+   Ascii["{rvs on}"] = 18;
+   Ascii["{home}"] = 19;
+   Ascii["{del}"] = 20;
+   Ascii["{rev u}"] = 21;
+   Ascii["{rev v}"] = 22;
+   Ascii["{rev w}"] = 23;
+   Ascii["{rev x}"] = 24;
+   Ascii["{rev y}"] = 25;
+   Ascii["{rev z}"] = 26;
+   Ascii["{rev [}"] = 27;
+   Ascii["{red}"] = 28;
+   Ascii["{right}"] = 29;
+   Ascii["{grn}"] = 30;  Ascii["{green}"] = 30;
+   Ascii["{blu}"] = 31;  Ascii["{blue}"] = 31;
+   Ascii[" "] = 32;
+   Ascii["!"] = 33;
+   Ascii["\x22"] = 34;
+   Ascii["#"] = 35;
+   Ascii["$"] = 36;
+   Ascii["%"] = 37;
+   Ascii["&"] = 38;
+   Ascii["'"] = 39;
+   Ascii["("] = 40;
+   Ascii[")"] = 41;
+   Ascii["*"] = 42;
+   Ascii["+"] = 43;
+   Ascii[","] = 44;
+   Ascii["-"] = 45;
+   Ascii["."] = 46;
+   Ascii["/"] = 47;
+   Ascii["0"] = 48;
+   Ascii["1"] = 49;
+   Ascii["2"] = 50;
+   Ascii["3"] = 51;
+   Ascii["4"] = 52;
+   Ascii["5"] = 53;
+   Ascii["6"] = 54;
+   Ascii["7"] = 55;
+   Ascii["8"] = 56;
+   Ascii["9"] = 57;
+   Ascii[":"] = 58;
+   Ascii[";"] = 59;
+   Ascii["<"] = 60;
+   Ascii["="] = 61;
+   Ascii[">"] = 62;
+   Ascii["?"] = 63;
+   Ascii["@"] = 64;
+   Ascii["A"] = 65;
+   Ascii["B"] = 66;
+   Ascii["C"] = 67;
+   Ascii["D"] = 68;
+   Ascii["E"] = 69;
+   Ascii["F"] = 70;
+   Ascii["G"] = 71;
+   Ascii["H"] = 72;
+   Ascii["I"] = 73;
+   Ascii["J"] = 74;
+   Ascii["K"] = 75;
+   Ascii["L"] = 76;
+   Ascii["M"] = 77;
+   Ascii["N"] = 78;
+   Ascii["O"] = 79;
+   Ascii["P"] = 80;
+   Ascii["Q"] = 81;
+   Ascii["R"] = 82;
+   Ascii["S"] = 83;
+   Ascii["T"] = 84;
+   Ascii["U"] = 85;
+   Ascii["V"] = 86;
+   Ascii["W"] = 87;
+   Ascii["X"] = 88;
+   Ascii["Y"] = 89;
+   Ascii["Z"] = 90;
+   Ascii["["] = 91;
+   Ascii["£"] = 92;
+   Ascii["]"] = 93;
+   Ascii["^"] = 94;
+   Ascii["{left arrow}"] = 95;
+   Ascii["{shift *}"] = 96;
+   Ascii["{shift a}"] = 97;
+   Ascii["{shift b}"] = 98;
+   Ascii["{shift c}"] = 99;
+   Ascii["{shift d}"] = 100;
+   Ascii["{shift e}"] = 101;
+   Ascii["{shift f}"] = 102;
+   Ascii["{shift g}"] = 103;
+   Ascii["{shift h}"] = 104;
+   Ascii["{shift i}"] = 105;
+   Ascii["{shift j}"] = 106;
+   Ascii["{shift k}"] = 107;
+   Ascii["{shift l}"] = 108;
+   Ascii["{shift m}"] = 109;
+   Ascii["{shift n}"] = 110;
+   Ascii["{shift o}"] = 111;
+   Ascii["{shift p}"] = 112;
+   Ascii["{shift q}"] = 113;
+   Ascii["{shift r}"] = 114;
+   Ascii["{shift s}"] = 115;
+   Ascii["{shift t}"] = 116;
+   Ascii["{shift u}"] = 117;
+   Ascii["{shift v}"] = 118;
+   Ascii["{shift w}"] = 119;  Ascii["{119}"] = 119;
+   Ascii["{shift x}"] = 120;
+   Ascii["{shift y}"] = 121;
+   Ascii["{shift z}"] = 122;
+   Ascii["{shift +}"] = 123;
+   Ascii["{cbm -}"] = 124;
+   Ascii["{shift -}"] = 125;
+   Ascii["{pi}"] = 126;
+   Ascii["{cbm *}"] = 127;
+   Ascii["{rev shift *}"] = 128;
+   Ascii["{rev shift a}"] = 129;  Ascii["{cbm 1}"] = 129;  Ascii["{orange}"] = 129;  
+   Ascii["{rev shift b}"] = 130;
+   Ascii["{rev shift c}"] = 131;
+   Ascii["{rev shift d}"] = 132;
+   Ascii["{f1}"] = 133;
+   Ascii["{f3}"] = 134;
+   Ascii["{f5}"] = 135;
+   Ascii["{f7}"] = 136;
+   Ascii["{f2}"] = 137;
+   Ascii["{f4}"] = 138;
+   Ascii["{f6}"] = 139;
+   Ascii["{f8}"] = 140;
+   Ascii["{rev shift m}"] = 141;
+   Ascii["{rev shift n}"] = 142;
+   Ascii["{rev shift o}"] = 143;
+   Ascii["{blk}"] = 144;   Ascii["{black}"] = 144;
+   Ascii["{up}"] = 145;
+   Ascii["{rvs off}"] = 146;
+   Ascii["{clr}"] = 147;   Ascii["{clear}"] = 147;
+   Ascii["{inst}"] = 148;
+   Ascii["{rev shift u}"] = 149; Ascii["{cbm 2}"] = 149; Ascii["{brown}"] = 149;
+   Ascii["{rev shift v}"] = 150; Ascii["{cbm 3}"] = 150; Ascii["{light red}"] = 150;
+   Ascii["{rev shift w}"] = 151; Ascii["{cbm 4}"] = 151; Ascii["{dark gray}"] = 151;
+   Ascii["{rev shift x}"] = 152; Ascii["{cbm 5}"] = 152; Ascii["{gray}"] = 152;
+   Ascii["{rev shift y}"] = 153; Ascii["{cbm 6}"] = 153; Ascii["{light green}"] = 153;
+   Ascii["{rev shift z}"] = 154; Ascii["{cbm 7}"] = 154; Ascii["{light blue}"] = 154;
+   Ascii["{rev shift +}"] = 155; Ascii["{cbm 8}"] = 155; Ascii["{light gray}"] = 155;
+   Ascii["{pur}"] = 156; Ascii["{purple}"] = 156; 
+   Ascii["{left}"] = 157;
+   Ascii["{yel}"] = 158; Ascii["{yellow}"] = 158;
+   Ascii["{cyn}"] = 159; Ascii["{cyan}"] = 159;
+   Ascii["{160}"] = 160;
+   Ascii["{cbm k}"] = 161;
+   Ascii["{cbm i}"] = 162;
+   Ascii["{cbm t}"] = 163;
+   Ascii["{cbm @}"] = 164;
+   Ascii["{cbm g}"] = 165;
+   Ascii["{cbm +}"] = 166;
+   Ascii["{cbm m}"] = 167;
+   Ascii["{cbm £}"] = 168;
+   Ascii["{shift £}"] = 169;
+   Ascii["{cbm n}"] = 170;
+   Ascii["{cbm q}"] = 171;
+   Ascii["{cbm d}"] = 172;
+   Ascii["{cbm z}"] = 173;
+   Ascii["{cbm s}"] = 174;
+   Ascii["{cbm p}"] = 175;
+   Ascii["{cbm a}"] = 176;
+   Ascii["{cbm e}"] = 177;
+   Ascii["{cbm r}"] = 178;
+   Ascii["{cbm w}"] = 179;
+   Ascii["{cbm h}"] = 180;
+   Ascii["{cbm j}"] = 181;
+   Ascii["{cbm l}"] = 182;
+   Ascii["{cbm y}"] = 183;
+   Ascii["{cbm u}"] = 184;
+   Ascii["{cbm o}"] = 185;
+   Ascii["{shift @}"] = 186;
+   Ascii["{cbm f}"] = 187;
+   Ascii["{cbm c}"] = 188;
+   Ascii["{cbm x}"] = 189;
+   Ascii["{cbm v}"] = 190;
+   Ascii["{cbm b}"] = 191;
+   Ascii["{shift *}"] = 192;
+   Ascii["{shift a}"] = 193;
+   Ascii["{shift b}"] = 194;
+   Ascii["{shift c}"] = 195;
+   Ascii["{shift d}"] = 196;
+   Ascii["{shift e}"] = 197;
+   Ascii["{shift f}"] = 198;
+   Ascii["{shift g}"] = 199;
+   Ascii["{shift h}"] = 200;
+   Ascii["{shift i}"] = 201;
+   Ascii["{shift j}"] = 202;
+   Ascii["{shift k}"] = 203;
+   Ascii["{shift l}"] = 204;
+   Ascii["{shift m}"] = 205;
+   Ascii["{shift n}"] = 206;
+   Ascii["{shift o}"] = 207;
+   Ascii["{shift p}"] = 208;
+   Ascii["{shift q}"] = 209;
+   Ascii["{shift r}"] = 210;
+   Ascii["{shift s}"] = 211;
+   Ascii["{shift t}"] = 212;
+   Ascii["{shift u}"] = 213;
+   Ascii["{shift v}"] = 214;
+   Ascii["{shift w}"] = 215;
+   Ascii["{shift x}"] = 216;
+   Ascii["{shift y}"] = 217;
+   Ascii["{shift z}"] = 218;
+   Ascii["{shift +}"] = 219;
+   Ascii["{cbm -}"] = 220;
+   Ascii["{shift -}"] = 221;
+   Ascii["{pi}"] = 222;
+   Ascii["{cbm *}"] = 223;
+   Ascii["{224}"] = 224;
+   Ascii["{cbm k}"] = 225;
+   Ascii["{cbm i}"] = 226;
+   Ascii["{cbm t}"] = 227;
+   Ascii["{cbm @}"] = 228;
+   Ascii["{cbm g}"] = 229;
+   Ascii["{cbm +}"] = 230;
+   Ascii["{cbm m}"] = 231;
+   Ascii["{cbm £}"] = 232;
+   Ascii["{shift £}"] = 233;
+   Ascii["{cbm n}"] = 234;
+   Ascii["{cbm q}"] = 235;
+   Ascii["{cbm d}"] = 236;
+   Ascii["{cbm z}"] = 237;
+   Ascii["{cbm s}"] = 238;
+   Ascii["{cbm p}"] = 239;
+   Ascii["{cbm a}"] = 240;
+   Ascii["{cbm e}"] = 241;
+   Ascii["{cbm r}"] = 242;
+   Ascii["{cbm w}"] = 243;
+   Ascii["{cbm h}"] = 244;
+   Ascii["{cbm j}"] = 245;
+   Ascii["{cbm l}"] = 246;
+   Ascii["{cbm y}"] = 247;
+   Ascii["{cbm u}"] = 248;
+   Ascii["{cbm o}"] = 249;
+   Ascii["{cbm @}"] = 250;
+   Ascii["{cbm f}"] = 251;
+   Ascii["{cbm c}"] = 252;
+   Ascii["{cbm x}"] = 253;
+   Ascii["{cbm v}"] = 254;
+   Ascii["{pi}"] = 255;
+}
 
 main();
