@@ -56,10 +56,7 @@ C-style comments `//` and `/* */` (not nested) are permitted.
 
 ## STATEMENT SEPARATION
  
-Statements can be separed onto a single line by a semicolon (`" : "`). 
-
-Note that space character is needed before and after the semicolon (`" : "`) to 
-allow differentiation from labels.  
+Statements can be separed onto a single line by a colon (`":"`). 
 
 Placing a semicolon in a "if-then" statement on a single line may cause confusion as 
 the statement after the semicolon is not considered part of the "if-then"

@@ -515,9 +515,9 @@ function IsIdentifier(s: string)
    return true;
 }
 
-function RemoveSemicolon()
+function RemoveColon()
 {  
-   // remove : semicolon
+   // remove : colon
    for(let t=0; t<L.Count; t++) 
    {      
       while(true)
@@ -608,7 +608,7 @@ function ProcessFile()
    
    ModOperator();
 
-   RemoveSemicolon();
+   RemoveColon();
 
    MakeAllUpperCase();
 
