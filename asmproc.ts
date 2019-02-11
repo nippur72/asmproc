@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// TODO test suite with 6502.js and Z80.js
+// TODO float compiler with nearley
 // TODO DIV, HIBYTE, LOBYTE functions
 // TODO ' hypen comments?
 // TODO "/*" comments when in quoted text
@@ -155,7 +157,7 @@ class TStringList extends TStack<string>
 
 function hex(value: number) 
 {
-   return "0x" + (value<=0xF ? "0":"") + value.toString(16);
+   return (value<=0xF ? "0":"") + value.toString(16);
 }
 
 function ChangeFileExt(name: string, ext: string): string 

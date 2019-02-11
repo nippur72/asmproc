@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -81,7 +81,7 @@ var TStringList = /** @class */ (function (_super) {
     return TStringList;
 }(TStack));
 function hex(value) {
-    return "0x" + (value <= 0xF ? "0" : "") + value.toString(16);
+    return (value <= 0xF ? "0" : "") + value.toString(16);
 }
 function ChangeFileExt(name, ext) {
     // taken from https://stackoverflow.com/questions/5953239/how-do-i-change-file-extension-with-javascript
