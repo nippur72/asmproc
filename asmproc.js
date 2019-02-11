@@ -288,16 +288,6 @@ function RemoveComments() {
         }
     }
     L.SetText(Whole);
-    // remove ; comments   
-    for (var t = 0; t < L.Count; t++) {
-        var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
-        var Linea = L.Strings[t];
-        var match = R.exec(Linea);
-        if (match !== null) {
-            var all = match[0], purged = match[1], comment = match[2];
-            L.Strings[t] = purged;
-        }
-    }
     // remove // comments   
     for (var t = 0; t < L.Count; t++) {
         var R = new RegExp(/(.*)\/\/(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
@@ -306,6 +296,33 @@ function RemoveComments() {
         if (match !== null) {
             var all = match[0], purged = match[1], comment = match[2];
             L.Strings[t] = purged;
+        }
+    }
+    // remove ; comments   
+    var inbasic = false;
+    for (var t = 0; t < L.Count; t++) {
+        var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+        var Linea = L.Strings[t];
+        var match = R.exec(Linea);
+        if (match !== null) {
+            var all = match[0], purged = match[1], comment = match[2];
+            // special case of ; comment in BASIC START / BASIC END
+            if (IsBasicStart(purged)) {
+                inbasic = true;
+                L.Strings[t] = purged;
+            }
+            else if (IsBasicEnd(purged)) {
+                inbasic = false;
+                L.Strings[t] = purged;
+            }
+            if (!inbasic)
+                L.Strings[t] = purged;
+        }
+        else {
+            if (IsBasicStart(Linea))
+                inbasic = true;
+            if (IsBasicEnd(Linea))
+                inbasic = false;
         }
     }
 }
@@ -1900,15 +1917,21 @@ function IsENDSUB(Linea, nl) {
     return undefined;
 }
 //---------------------------------------------------------------------------
+function IsBasicStart(Linea) {
+    return Linea.toUpperCase().AnsiPos("BASIC START") > 0;
+}
+function IsBasicEnd(Linea) {
+    return Linea.toUpperCase().AnsiPos("BASIC END") > 0;
+}
 function IsBasic(Linea, nl) {
     Linea = UpperCase(Trim(Linea)) + " ";
     var StuffLine;
     var si = -1;
     // compact lines with no no line numbers into the previous numbered line
-    if (Linea.AnsiPos("BASIC START") > 0) {
+    if (IsBasicStart(Linea)) {
         for (var t = nl + 1; t < L.Count; t++) {
             var Linx = UpperCase(Trim(L.Strings[t]));
-            if (Linx.AnsiPos("BASIC END") > 0)
+            if (IsBasicEnd(Linx))
                 break;
             if (StartWithNumber(Linx)) {
                 si = t;

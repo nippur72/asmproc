@@ -432,18 +432,6 @@ function RemoveComments()
     }
     L.SetText(Whole);
 
-   // remove ; comments   
-   for(let t=0; t<L.Count; t++) 
-   {
-      const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
-      const Linea = L.Strings[t];      
-      const match = R.exec(Linea);
-      if(match !== null) {         
-         const [all, purged, comment] = match;         
-         L.Strings[t] = purged;     
-      }
-   }
-   
    // remove // comments   
    for(let t=0; t<L.Count; t++) 
    {
@@ -455,6 +443,35 @@ function RemoveComments()
          L.Strings[t] = purged;     
       }
    }
+
+   // remove ; comments   
+   let inbasic = false;
+   for(let t=0; t<L.Count; t++) 
+   {
+      const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+      const Linea = L.Strings[t];      
+      const match = R.exec(Linea);
+      
+      if(match !== null) {         
+         const [all, purged, comment] = match;         
+         // special case of ; comment in BASIC START / BASIC END
+         if(IsBasicStart(purged)) {
+            inbasic = true;            
+            L.Strings[t] = purged;
+         }
+         else if(IsBasicEnd(purged)) {
+            inbasic = false;            
+            L.Strings[t] = purged;     
+         }       
+
+         if(!inbasic) L.Strings[t] = purged;
+      }
+      else 
+      {
+         if(IsBasicStart(Linea)) inbasic = true;
+         if(IsBasicEnd(Linea)) inbasic = false;
+      }
+   }   
 }
 
 function ModOperator()
@@ -2046,6 +2063,14 @@ function IsENDSUB(Linea: string, nl: number): string | undefined
 
 //---------------------------------------------------------------------------
 
+function IsBasicStart(Linea: string) {
+   return Linea.toUpperCase().AnsiPos("BASIC START")>0;
+}
+
+function IsBasicEnd(Linea: string) {
+   return Linea.toUpperCase().AnsiPos("BASIC END")>0;
+}
+
 function IsBasic(Linea: string, nl: number): boolean
 {
    Linea = UpperCase(Trim(Linea))+" ";
@@ -2054,12 +2079,12 @@ function IsBasic(Linea: string, nl: number): boolean
    let si=-1;
 
    // compact lines with no no line numbers into the previous numbered line
-   if(Linea.AnsiPos("BASIC START")>0)
+   if(IsBasicStart(Linea))
    {
       for(let t=nl+1; t<L.Count; t++)
       {
          let Linx = UpperCase(Trim(L.Strings[t]));
-         if(Linx.AnsiPos("BASIC END")>0) break;
+         if(IsBasicEnd(Linx)) break;
 
          if(StartWithNumber(Linx))
          {
