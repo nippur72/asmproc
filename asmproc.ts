@@ -1933,6 +1933,112 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
    let matchingMacros = AllMacros.filter(e=>e.Name === NomeMacro);
    if(matchingMacros.length === 0) return undefined;
 
+   // build plist
+   let prm = Linea + ",";
+   let orig = Linea;
+   let list: string[] = [];
+   let actualparms: string[] = [];
+
+   for(;;)
+   {              
+      G = GetToken(prm, ","); let p = Trim(G.Token); prm = G.Rest;      
+      if(p == "") break;
+      actualparms.push(p);
+      if(p.startsWith("#")) list.push("CONST");
+      //else if(p.startsWith("(") && p.endsWith(")")) list.push("INDIRECT");
+      else list.push(p);      
+   }   
+
+   let foundMacro;
+
+   // console.log(matchingMacros);
+
+   for(let j=0; j<matchingMacros.length; j++)
+   {
+      let m = matchingMacros[j];
+      
+      // number of parameters do not match;
+      if(m.Parameters.length != list.length) continue;
+
+      // console.log(m);
+      // console.log("number of p ok");
+
+      let found = true;
+
+      for(let t=0; t<m.Parameters.length; t++) {
+         let macrop = m.Parameters[t];
+         let actualp = list[t];
+
+         // console.log(`actualp=${actualp} macropp=${macrop}`);
+         if(`"${actualp}"` == macrop) continue;
+         if(actualp == "CONST" && macrop == "CONST") continue;
+         if((actualp.startsWith("(") && actualp.endsWith(")")) && macrop == "INDIRECT") continue;         
+         if(macrop === "MEM") continue;
+         if(macrop !== actualp) found = false;
+      }            
+
+      if(found) {
+         // console.log("matched!!!");
+         foundMacro = m;
+         break;
+      }
+   }
+
+   // console.log(foundMacro);
+   /*
+   const matching = matchingMacros.filter(e=>e.Parameters.join(",") === list.join(","));   
+
+        if(matching.length === 0) return undefined;
+   else if(matching.length !== 1) error(`more than on macro matching "${NomeMacro}"`);
+
+   const foundMacro = matching[0];
+   */
+
+   if(foundMacro === undefined) return undefined;
+
+   let ReplaceTo = `   ${foundMacro.Id} ${orig}`;   
+
+   // new self extracting macro
+   if(true)
+   {      
+      let code = foundMacro.Code;      
+      for(let t=0; t<actualparms.length; t++) {
+         // replace parameters
+         const pattern = `\\{${t+1}\\}`;
+         const R = new RegExp(pattern, "gmi");
+         const param = RemoveHash(actualparms[t]);
+         code = code.replace(R, param);
+
+         // replace local labels in macro code                           
+         code = code.replace(/\local_label/gmi, Label("LOCAL", nl, "LABEL"));
+      }
+      ReplaceTo = code;
+   }
+
+   // console.log(`ReplaceTo=${ReplaceTo}`);
+
+   return ReplaceTo;
+}
+
+/*
+function IsMacroCall(Linea: string, nl: number): string | undefined
+{
+   Linea = UpperCase(Trim(Linea))+" ";
+
+   let G = GetToken(Linea," "); Linea = G.Rest;
+
+   let NomeMacro = G.Token;
+   let Parametri = Trim(Linea);
+
+   // empty macro
+   if(NomeMacro=="") return undefined;
+
+   // permette il carattere "." nel nome macro
+   NomeMacro = NomeMacro.replace(/\./g, "_")
+
+   let matchingMacros = AllMacros.filter(e=>e.Name === NomeMacro);
+   if(matchingMacros.length === 0) return undefined;
+
    // console.log(`matched macro ${NomeMacro}: ${matchingMacros.length} macros`);
 
    // build plist
@@ -1981,6 +2087,7 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
 
    return ReplaceTo;
 }
+*/
 
 function IsSUB(Linea: string, nl: number): string | undefined
 {
