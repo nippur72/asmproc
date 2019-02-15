@@ -269,7 +269,20 @@ let cpuz80  = false;
 
 let JMP: string;
 let BYTE: string;
-let PARENS: string;
+
+function parens(s: string) {
+        if(dasm)   return `[${s}]`;
+   else if(ca65)   return `(${s})`;
+   else if(z80asm) return `[${s}]`;
+   throw "";   
+}
+
+function notequal(a: string, b: string){
+        if(dasm)   return `${a}!=${b}`;
+   else if(ca65)   return `${a}<>${b}`;
+   else if(z80asm) return `${a}<>${b}`;
+   throw "";   
+}
 
 function hibyte(byte: string) {
         if(dasm)   return `${byte}/256`;
@@ -339,20 +352,17 @@ function main()
 
    if(dasm) 
    {
-      BYTE = "byte";
-      PARENS = "[]";
+      BYTE = "byte";      
    }
 
    if(ca65) 
    {
-      BYTE = ".byte";
-      PARENS = "()";
+      BYTE = ".byte";      
    }
 
    if(z80asm) 
    {
-      BYTE = "defb";
-      PARENS = "()";
+      BYTE = "defb";      
    }
 
    L = new TStringList();
@@ -983,7 +993,7 @@ function IsREPEAT(Linea: string, nl: number): string | undefined
 
 function IsSelfModLabel(Linea: string, nl: number): string | undefined
 {   
-   let R = new RegExp(/^(.*)\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+   let R = new RegExp(/^(.*)\*\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
    let match = R.exec(Linea);
    if(match !== null) {            
       const [all, leftside, varname, varparm, rightside] = match;      
@@ -1570,7 +1580,8 @@ function ParseCond(W: string)
 
       if(Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") 
       {
-         Eval1 = `§#IF ${RemoveHash(Operand)} <> 0§${Eval1}§#ENDIF§`;
+         const expr = notequal(parens(RemoveHash(Operand)),"0");
+         Eval1 = `§#IF ${expr}§${Eval1}§#ENDIF§`;
       }
       Eval = Eval + Eval1;
    }
@@ -2104,9 +2115,10 @@ function IsSUB(Linea: string, nl: number): string | undefined
    {
       NomeSub = NomeSub.SubString(1,NomeSub.Length()-2);
    }
+   else return undefined;
 
    // non è una sub ma la macro "sub"
-   if(NomeSub.AnsiPos(",")>0) return undefined;
+   // if(NomeSub.AnsiPos(",")>0) return undefined;
 
    let ReplaceTo = NomeSub+":";
    StackSub.Add(nl);   
@@ -2301,6 +2313,20 @@ function MatchTextToken(Linea: string, inquote: boolean, inrem: boolean)
 
 function MatchSymbol(Linea: string, inquote: boolean, inrem: boolean)
 {
+   function cifra(Symbol: string, c: number) {
+      // (((n % 1000) - (n % 100)/100 + $30)
+      let n = Math.pow(10, c+1);
+      let mille = String(n);
+      let cento = String(n/10);
+
+      let n_mod_mille = parens(mod(Symbol, mille));
+      let n_mod_cento = parens(mod(Symbol, cento));
+      let n_mod_mille_meno_n_mod_cento = parens(`${n_mod_mille}-${n_mod_cento}`);
+      let div_cento = `${n_mod_mille_meno_n_mod_cento}/${cento}`;
+      let all = parens(`${div_cento}+$30`);
+      return all;
+   }
+
    // match reference to symbol {symbol}, rendered as a 4 character basic number
    if(Linea.SubString(1,1)=="{")
    {
@@ -2309,13 +2335,13 @@ function MatchSymbol(Linea: string, inquote: boolean, inrem: boolean)
       {
          let Symbol = Linea.SubString(2,x-2);
          Linea = Linea.SubString(x+1);
-         let prima_cifra   = "[["  + mod(Symbol,    "10") + "] + $30]";
-         let seconda_cifra = "[[[" + mod(Symbol,   "100") + "-[" + mod(Symbol,"10")   +"]]/10] + $30]";
-         let terza_cifra   = "[[[" + mod(Symbol,  "1000") + "-[" + mod(Symbol,"100")  +"]]/100] + $30]";
-         let quarta_cifra  = "[[[" + mod(Symbol, "10000") + "-[" + mod(Symbol,"1000") +"]]/1000] + $30]";
-         let quinta_cifra  = "[[[" + mod(Symbol,"100000") + "-[" + mod(Symbol,"10000")+"]]/10000] + $30]";
+         let prima_cifra   = cifra(Symbol, 0);
+         let seconda_cifra = cifra(Symbol, 1);
+         let terza_cifra   = cifra(Symbol, 2);
+         let quarta_cifra  = cifra(Symbol, 3);
+         let quinta_cifra  = cifra(Symbol, 4);
 
-         let Matched = quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
+         let Matched = `${quarta_cifra},${terza_cifra},${seconda_cifra},${prima_cifra},`;
 
          return { Matched, Linea, inquote, inrem };
       }
@@ -2452,12 +2478,7 @@ function TranslateBasic(Linea: string): string
    let Label = `basic_row_${basic_row}:`;
    let NextLabel = `basic_row_${basic_row+1}`;
 
-   let ReplaceTo = Label+`  ${BYTE} [${lobyte(NextLabel)}],[${hibyte(NextLabel)}],[${lobyte(numlin.toString())}],[${hibyte(numlin.toString())}],${Compr}`;
-
-   if(PARENS !== "[]")
-   {
-      ReplaceTo = ReplaceTo.replace(/\[/g, "(").replace(/\]/g, ")");
-   }
+   let ReplaceTo = Label+`  ${BYTE} ${parens(lobyte(NextLabel))},${parens(hibyte(NextLabel))},${parens(lobyte(numlin.toString()))},${parens(hibyte(numlin.toString()))},${Compr}`;
 
    basic_row++;
 

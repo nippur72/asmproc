@@ -404,11 +404,11 @@ main:
 
 Use the syntax `*VARNAME` in opcode arguments to automatically create a name
 that points to the argument for self-modifying code. Specify the initial value
-of the variabile with `*VARNAME(initialvalue)`
+of the variabile with `**VARNAME(initialvalue)`
 
 Example
 ```
-   STA *VIDEO($1C00)  ; VIDEO points to the byte after "STA"
+   STA **VIDEO($1C00)  ; VIDEO points to the byte after "STA"
    INC VIDEO      
 ```
 
