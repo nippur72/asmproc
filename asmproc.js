@@ -156,7 +156,24 @@ var cpu6502 = false;
 var cpuz80 = false;
 var JMP;
 var BYTE;
-var PARENS;
+function parens(s) {
+    if (dasm)
+        return "[" + s + "]";
+    else if (ca65)
+        return "(" + s + ")";
+    else if (z80asm)
+        return "[" + s + "]";
+    throw "";
+}
+function notequal(a, b) {
+    if (dasm)
+        return a + "!=" + b;
+    else if (ca65)
+        return a + "<>" + b;
+    else if (z80asm)
+        return a + "<>" + b;
+    throw "";
+}
 function hibyte(byte) {
     if (dasm)
         return byte + "/256";
@@ -220,15 +237,12 @@ function main() {
     }
     if (dasm) {
         BYTE = "byte";
-        PARENS = "[]";
     }
     if (ca65) {
         BYTE = ".byte";
-        PARENS = "()";
     }
     if (z80asm) {
         BYTE = "defb";
-        PARENS = "()";
     }
     L = new TStringList();
     var FName = options.input;
@@ -765,7 +779,7 @@ function IsREPEAT(Linea, nl) {
     return ReplaceTo;
 }
 function IsSelfModLabel(Linea, nl) {
-    var R = new RegExp(/^(.*)\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
+    var R = new RegExp(/^(.*)\*\*([_a-zA-Z]+[_a-zA-Z0-9]*)(?:\((.*)\))?(.*)$/gmi);
     var match = R.exec(Linea);
     if (match !== null) {
         var all = match[0], leftside = match[1], varname = match[2], varparm = match[3], rightside = match[4];
@@ -1479,7 +1493,8 @@ function ParseCond(W) {
         else
             Operator = "#";
         if (Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") {
-            Eval1 = "\u00A7#IF " + RemoveHash(Operand) + " <> 0\u00A7" + Eval1 + "\u00A7#ENDIF\u00A7";
+            var expr = notequal(parens(RemoveHash(Operand)), "0");
+            Eval1 = "\u00A7#IF " + expr + "\u00A7" + Eval1 + "\u00A7#ENDIF\u00A7";
         }
         Eval = Eval + Eval1;
     }
@@ -1966,9 +1981,10 @@ function IsSUB(Linea, nl) {
     if (NomeSub.Length() > 2 && NomeSub.SubString(NomeSub.Length() - 1, 2) == "()") {
         NomeSub = NomeSub.SubString(1, NomeSub.Length() - 2);
     }
-    // non è una sub ma la macro "sub"
-    if (NomeSub.AnsiPos(",") > 0)
+    else
         return undefined;
+    // non è una sub ma la macro "sub"
+    // if(NomeSub.AnsiPos(",")>0) return undefined;
     var ReplaceTo = NomeSub + ":";
     StackSub.Add(nl);
     return ReplaceTo;
@@ -2116,17 +2132,29 @@ function MatchTextToken(Linea, inquote, inrem) {
     return undefined;
 }
 function MatchSymbol(Linea, inquote, inrem) {
+    function cifra(Symbol, c) {
+        // (((n % 1000) - (n % 100)/100 + $30)
+        var n = Math.pow(10, c + 1);
+        var mille = String(n);
+        var cento = String(n / 10);
+        var n_mod_mille = parens(mod(Symbol, mille));
+        var n_mod_cento = parens(mod(Symbol, cento));
+        var n_mod_mille_meno_n_mod_cento = parens(n_mod_mille + "-" + n_mod_cento);
+        var div_cento = n_mod_mille_meno_n_mod_cento + "/" + cento;
+        var all = parens(div_cento + "+$30");
+        return all;
+    }
     // match reference to symbol {symbol}, rendered as a 4 character basic number
     if (Linea.SubString(1, 1) == "{") {
         var x = Linea.AnsiPos("}");
         if (x > 0) {
             var Symbol_1 = Linea.SubString(2, x - 2);
             Linea = Linea.SubString(x + 1);
-            var prima_cifra = "[[" + mod(Symbol_1, "10") + "] + $30]";
-            var seconda_cifra = "[[[" + mod(Symbol_1, "100") + "-[" + mod(Symbol_1, "10") + "]]/10] + $30]";
-            var terza_cifra = "[[[" + mod(Symbol_1, "1000") + "-[" + mod(Symbol_1, "100") + "]]/100] + $30]";
-            var quarta_cifra = "[[[" + mod(Symbol_1, "10000") + "-[" + mod(Symbol_1, "1000") + "]]/1000] + $30]";
-            var quinta_cifra = "[[[" + mod(Symbol_1, "100000") + "-[" + mod(Symbol_1, "10000") + "]]/10000] + $30]";
+            var prima_cifra = cifra(Symbol_1, 0);
+            var seconda_cifra = cifra(Symbol_1, 1);
+            var terza_cifra = cifra(Symbol_1, 2);
+            var quarta_cifra = cifra(Symbol_1, 3);
+            var quinta_cifra = cifra(Symbol_1, 4);
             var Matched = quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
             return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
         }
@@ -2232,10 +2260,7 @@ function TranslateBasic(Linea) {
     Compr = Compr + "0";
     var Label = "basic_row_" + basic_row + ":";
     var NextLabel = "basic_row_" + (basic_row + 1);
-    var ReplaceTo = Label + ("  " + BYTE + " [" + lobyte(NextLabel) + "],[" + hibyte(NextLabel) + "],[" + lobyte(numlin.toString()) + "],[" + hibyte(numlin.toString()) + "]," + Compr);
-    if (PARENS !== "[]") {
-        ReplaceTo = ReplaceTo.replace(/\[/g, "(").replace(/\]/g, ")");
-    }
+    var ReplaceTo = Label + ("  " + BYTE + " " + parens(lobyte(NextLabel)) + "," + parens(hibyte(NextLabel)) + "," + parens(lobyte(numlin.toString())) + "," + parens(hibyte(numlin.toString())) + "," + Compr);
     basic_row++;
     return ReplaceTo;
 }
