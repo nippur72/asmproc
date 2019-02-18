@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    };
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -156,6 +156,7 @@ var cpu6502 = false;
 var cpuz80 = false;
 var JMP;
 var BYTE;
+var defines;
 function parens(s) {
     if (dasm)
         return "[" + s + "]";
@@ -216,7 +217,8 @@ function main() {
     var options = parseOptions([
         { name: 'input', alias: 'i', type: String },
         { name: 'output', alias: 'o', type: String },
-        { name: 'target', alias: 't', type: String, defaultValue: 'dasm' }
+        { name: 'target', alias: 't', type: String, defaultValue: 'dasm' },
+        { name: 'define', alias: 'd', type: String }
     ]);
     if (options === undefined || options.input === undefined || options.output === undefined) {
         console.log("Usage: asmproc -i <inputfile> -o <outputfile>");
@@ -244,6 +246,7 @@ function main() {
     if (z80asm) {
         BYTE = "defb";
     }
+    defines = options.define === undefined ? [] : options.define.split(",");
     L = new TStringList();
     var FName = options.input;
     var FOut = options.output;
@@ -484,6 +487,22 @@ function ProcessFile() {
         if (ReplaceTo !== undefined)
             L.Strings[t] = ReplaceTo;
     }
+    // scan for sub...end sub, need before macro to avoid conflicts with "sub"
+    for (t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = void 0;
+        ReplaceTo = IsSUB(Dummy, t);
+        if (ReplaceTo !== undefined)
+            L.Strings[t] = ReplaceTo;
+        ReplaceTo = IsEXITSUB(Dummy, t);
+        if (ReplaceTo !== undefined)
+            L.Strings[t] = ReplaceTo;
+        ReplaceTo = IsENDSUB(Dummy, t);
+        if (ReplaceTo !== undefined)
+            L.Strings[t] = ReplaceTo;
+    }
+    if (!StackSub.IsEmpty)
+        error("SUB without END SUB");
     // pre-process macros and build macro list   
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
@@ -568,22 +587,6 @@ function ProcessFile() {
     }
     if (!StackFor.IsEmpty)
         error("FOR without NEXT");
-    // scan for sub...end sub
-    for (t = 0; t < L.Count; t++) {
-        var Dummy = L.Strings[t];
-        var ReplaceTo = void 0;
-        ReplaceTo = IsSUB(Dummy, t);
-        if (ReplaceTo !== undefined)
-            L.Strings[t] = ReplaceTo;
-        ReplaceTo = IsEXITSUB(Dummy, t);
-        if (ReplaceTo !== undefined)
-            L.Strings[t] = ReplaceTo;
-        ReplaceTo = IsENDSUB(Dummy, t);
-        if (ReplaceTo !== undefined)
-            L.Strings[t] = ReplaceTo;
-    }
-    if (!StackSub.IsEmpty)
-        error("SUB without END SUB");
     // scan for on single line: "if then <statement>"
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
@@ -627,6 +630,22 @@ function ProcessFile() {
         if (ReplaceTo !== undefined)
             L.Strings[t] = ReplaceTo;
     }
+    // substitute const
+    for (t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = IsConst(Dummy, t);
+        if (ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;
+        }
+    }
+    // add defines on top of the file
+    var definecode = defines.map(function (e) {
+        if (e.indexOf("=") < 0)
+            return e + "=1";
+        else
+            return e + "=1";
+    }).join("§");
+    L.Strings[0] = definecode + L.Strings[0];
     // change § into newlines
     L.SetText(L.Text().replace(/§/g, "\n"));
     // substitute reserved keywords
@@ -1822,9 +1841,6 @@ function IsMacroCall(Linea, nl) {
         return undefined;
     // permette il carattere "." nel nome macro
     NomeMacro = NomeMacro.replace(/\./g, "_");
-    var matchingMacros = AllMacros.filter(function (e) { return e.Name === NomeMacro; });
-    if (matchingMacros.length === 0)
-        return undefined;
     // build plist
     var prm = Linea + ",";
     var orig = Linea;
@@ -1843,48 +1859,18 @@ function IsMacroCall(Linea, nl) {
         else
             list.push(p);
     }
-    var foundMacro;
-    // console.log(matchingMacros);
-    for (var j = 0; j < matchingMacros.length; j++) {
-        var m = matchingMacros[j];
-        // number of parameters do not match;
-        if (m.Parameters.length != list.length)
-            continue;
-        // console.log(m);
-        // console.log("number of p ok");
-        var found = true;
-        for (var t = 0; t < m.Parameters.length; t++) {
-            var macrop = m.Parameters[t];
-            var actualp = list[t];
-            // console.log(`actualp=${actualp} macropp=${macrop}`);
-            if ("\"" + actualp + "\"" == macrop)
-                continue;
-            if (actualp == "CONST" && macrop == "CONST")
-                continue;
-            if ((actualp.startsWith("(") && actualp.endsWith(")")) && macrop == "INDIRECT")
-                continue;
-            if (macrop === "MEM")
-                continue;
-            if (macrop !== actualp)
-                found = false;
-        }
-        if (found) {
-            // console.log("matched!!!");
-            foundMacro = m;
-            break;
-        }
-    }
-    // console.log(foundMacro);
-    /*
-    const matching = matchingMacros.filter(e=>e.Parameters.join(",") === list.join(","));
- 
-         if(matching.length === 0) return undefined;
-    else if(matching.length !== 1) error(`more than on macro matching "${NomeMacro}"`);
- 
-    const foundMacro = matching[0];
-    */
-    if (foundMacro === undefined)
+    // filter out macro with different name
+    var matchingMacros = AllMacros.filter(function (e) { return e.Name === NomeMacro; });
+    if (matchingMacros.length === 0)
         return undefined;
+    // filter out macro with different number of parameters
+    matchingMacros = matchingMacros.filter(function (m) { return m.Parameters.length === list.length; });
+    if (matchingMacros.length === 0)
+        return undefined;
+    matchingMacros = matchingMacros.filter(function (m) { return isMatchingMacroParameters(m.Parameters, list); });
+    if (matchingMacros.length === 0)
+        return undefined;
+    var foundMacro = matchingMacros[0];
     var ReplaceTo = "   " + foundMacro.Id + " " + orig;
     // new self extracting macro
     if (true) {
@@ -1902,6 +1888,38 @@ function IsMacroCall(Linea, nl) {
     }
     // console.log(`ReplaceTo=${ReplaceTo}`);
     return ReplaceTo;
+}
+function isMatchingMacroParameters(mparms, list) {
+    for (var t = 0; t < mparms.length; t++) {
+        var macrop = mparms[t];
+        var actualp = list[t];
+        if (!isGoodMacroParameter(macrop, actualp))
+            return false;
+    }
+    return true;
+}
+function isGoodMacroParameter(macrop, actualp) {
+    if ("\"" + actualp + "\"" === macrop) {
+        return true;
+    }
+    else if (actualp == "CONST") {
+        if (macrop == "CONST")
+            return true;
+        else
+            return false;
+    }
+    else if (actualp.startsWith("(") && actualp.endsWith(")")) {
+        if (macrop == "INDIRECT")
+            return true;
+        else
+            return false;
+    }
+    else {
+        if (macrop === "MEM")
+            return true;
+        else
+            return false;
+    }
 }
 /*
 function IsMacroCall(Linea: string, nl: number): string | undefined
@@ -1977,14 +1995,10 @@ function IsSUB(Linea, nl) {
     if (StringaSUB != "SUB")
         return undefined;
     var NomeSub = Trim(GetParm(Linea, " ", 1));
-    // toglie eventuale "()"
-    if (NomeSub.Length() > 2 && NomeSub.SubString(NomeSub.Length() - 1, 2) == "()") {
-        NomeSub = NomeSub.SubString(1, NomeSub.Length() - 2);
-    }
-    else
+    // impone terminazione con ()
+    if (!NomeSub.endsWith("()"))
         return undefined;
-    // non è una sub ma la macro "sub"
-    // if(NomeSub.AnsiPos(",")>0) return undefined;
+    NomeSub = NomeSub.SubString(1, NomeSub.Length() - 2);
     var ReplaceTo = NomeSub + ":";
     StackSub.Add(nl);
     return ReplaceTo;
@@ -2030,6 +2044,15 @@ function IsENDSUB(Linea, nl) {
         return ReplaceTo;
     }
     return undefined;
+}
+// const id = value
+function IsConst(Linea, nl) {
+    var R = new RegExp(/\s*const\s+([_a-zA-Z0-9]+[_a-zA-Z0-9]*)\s+=\s+(.*)/gmi);
+    var match = R.exec(Linea);
+    if (match === null)
+        return undefined;
+    var all = match[0], id = match[1], value = match[2];
+    return id + " = " + value;
 }
 //---------------------------------------------------------------------------
 function IsBasicStart(Linea) {
@@ -2830,3 +2853,25 @@ function InitTokens() {
     Ascii["{pi}"] = 255;
 }
 main();
+/*
+Grammar:
+
+- comment
+- include
+- #ifdef, #ifndef, #if #else #endif
+- directives (org, processor)
+- basic start/end
+- sub/end sub
+- macro/endmacro
+- const id = expr
+- id = expr
+- do loop/for next/repeat until/exit do/for/repeat
+- continue?
+- if then else
+- [label:] mnmemoic [args [, ...]]
+- [label:] byte [...]
+- [label:] word [...]
+- [label:] bitmap [...]
+- [label:] float [...]
+
+*/

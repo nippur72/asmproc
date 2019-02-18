@@ -23,7 +23,7 @@ for `.asm` files.
 
 From the command prompt:
 ```
-asmproc -i <inputfile> -o <destfile> [-t target]
+asmproc -i <inputfile> -o <destfile> [-t target] [-d definelist]
 ```
 
 - `inputfile` is the source file written according 
@@ -38,6 +38,11 @@ Both `inputfile` and `destfile` are plain text files.
    - `dasm` DASM assembler (default)
    - `ca65` cc65 assembler
    - `z80asm` z88dk assembler
+
+- `definelist` a comma separated list of symbols to define, eg.
+```
+asmproc -i a.lm -o a.asm -d C64,ROM=$C000
+```
 
 If `asmproc` fails to compile due to an error in the source file
 the `%ERRORLEVEL%` shell variable is set to `-1` so that 
@@ -347,6 +352,16 @@ Example:
 
 ```
   lda #(foo MOD 256)
+```
+
+## CONST
+
+`const` can be used to explictly define a constant.
+
+Example:
+
+```
+const NULL = $0
 ```
 
 ## INLINE BASIC

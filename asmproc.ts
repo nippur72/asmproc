@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// TODO conditional include
 // TODO test suite with 6502.js and Z80.js
 // TODO float compiler with nearley
 // TODO DIV, HIBYTE, LOBYTE functions
@@ -270,6 +271,8 @@ let cpuz80  = false;
 let JMP: string;
 let BYTE: string;
 
+let defines: string[];
+
 function parens(s: string) {
         if(dasm)   return `[${s}]`;
    else if(ca65)   return `(${s})`;
@@ -323,7 +326,8 @@ function main()
    const options = parseOptions([
       { name: 'input',      alias: 'i', type: String },
       { name: 'output',     alias: 'o', type: String }, 
-      { name: 'target',     alias: 't', type: String,  defaultValue: 'dasm' }  
+      { name: 'target',     alias: 't', type: String,  defaultValue: 'dasm' },
+      { name: 'define',     alias: 'd', type: String }
    ]);   
 
    if(options === undefined || options.input === undefined || options.output === undefined) 
@@ -364,6 +368,8 @@ function main()
    {
       BYTE = "defb";      
    }
+
+   defines = options.define === undefined ? [] : options.define.split(",");
 
    L = new TStringList();
 
@@ -662,6 +668,19 @@ function ProcessFile()
       ReplaceTo = IsSelfModLabel(Dummy, t); 
       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;   
    }
+
+   // scan for sub...end sub, need before macro to avoid conflicts with "sub"
+   for(t=0;t<L.Count;t++)
+   {
+    	let Dummy = L.Strings[t];
+    	let ReplaceTo;
+
+      ReplaceTo = IsSUB(Dummy, t);     if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
+      ReplaceTo = IsEXITSUB(Dummy, t); if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
+      ReplaceTo = IsENDSUB(Dummy, t);  if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
+   }
+
+   if(!StackSub.IsEmpty) error("SUB without END SUB");    
    
    // pre-process macros and build macro list   
    for(t=0; t<L.Count; t++)
@@ -735,19 +754,6 @@ function ProcessFile()
 
    if(!StackFor.IsEmpty) error("FOR without NEXT");
 
-   // scan for sub...end sub
-   for(t=0;t<L.Count;t++)
-   {
-    	let Dummy = L.Strings[t];
-    	let ReplaceTo;
-
-      ReplaceTo = IsSUB(Dummy, t);     if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
-      ReplaceTo = IsEXITSUB(Dummy, t); if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
-      ReplaceTo = IsENDSUB(Dummy, t);  if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
-   }
-
-   if(!StackSub.IsEmpty) error("SUB without END SUB");    
-
    // scan for on single line: "if then <statement>"
    for(t=0;t<L.Count;t++)
    {
@@ -797,6 +803,26 @@ function ProcessFile()
       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
    }
 
+   // substitute const
+   for(t=0; t<L.Count; t++)
+   {
+   	let Dummy = L.Strings[t];
+      let ReplaceTo = IsConst(Dummy, t);
+
+      if(ReplaceTo !== undefined)
+    	{
+         L.Strings[t] = ReplaceTo;
+      }
+   }
+
+   // add defines on top of the file
+   const definecode = defines.map(e=>{
+      if(e.indexOf("=")<0) return `${e}=1`;
+      else return `${e}=1`;
+   }).join("§");
+   
+   L.Strings[0] = definecode + L.Strings[0];
+
    // change § into newlines
    L.SetText(L.Text().replace(/§/g,"\n"));
 
@@ -811,6 +837,7 @@ function ProcessFile()
          L.Strings[t] = ReplaceTo;
       }
    }   
+
 }
 
 function SplitToken(Linea: string, token: string)
@@ -1941,15 +1968,11 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
    // permette il carattere "." nel nome macro
    NomeMacro = NomeMacro.replace(/\./g, "_")
 
-   let matchingMacros = AllMacros.filter(e=>e.Name === NomeMacro);
-   if(matchingMacros.length === 0) return undefined;
-
    // build plist
    let prm = Linea + ",";
    let orig = Linea;
    let list: string[] = [];
    let actualparms: string[] = [];
-
    for(;;)
    {              
       G = GetToken(prm, ","); let p = Trim(G.Token); prm = G.Rest;      
@@ -1960,52 +1983,18 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
       else list.push(p);      
    }   
 
-   let foundMacro;
+   // filter out macro with different name
+   let matchingMacros = AllMacros.filter(e=>e.Name === NomeMacro);
+   if(matchingMacros.length === 0) return undefined;
 
-   // console.log(matchingMacros);
+   // filter out macro with different number of parameters
+   matchingMacros = matchingMacros.filter(m=>m.Parameters.length === list.length);
+   if(matchingMacros.length === 0) return undefined;
 
-   for(let j=0; j<matchingMacros.length; j++)
-   {
-      let m = matchingMacros[j];
-      
-      // number of parameters do not match;
-      if(m.Parameters.length != list.length) continue;
+   matchingMacros = matchingMacros.filter(m=>isMatchingMacroParameters(m.Parameters, list));
+   if(matchingMacros.length === 0) return undefined;
 
-      // console.log(m);
-      // console.log("number of p ok");
-
-      let found = true;
-
-      for(let t=0; t<m.Parameters.length; t++) {
-         let macrop = m.Parameters[t];
-         let actualp = list[t];
-
-         // console.log(`actualp=${actualp} macropp=${macrop}`);
-         if(`"${actualp}"` == macrop) continue;
-         if(actualp == "CONST" && macrop == "CONST") continue;
-         if((actualp.startsWith("(") && actualp.endsWith(")")) && macrop == "INDIRECT") continue;         
-         if(macrop === "MEM") continue;
-         if(macrop !== actualp) found = false;
-      }            
-
-      if(found) {
-         // console.log("matched!!!");
-         foundMacro = m;
-         break;
-      }
-   }
-
-   // console.log(foundMacro);
-   /*
-   const matching = matchingMacros.filter(e=>e.Parameters.join(",") === list.join(","));   
-
-        if(matching.length === 0) return undefined;
-   else if(matching.length !== 1) error(`more than on macro matching "${NomeMacro}"`);
-
-   const foundMacro = matching[0];
-   */
-
-   if(foundMacro === undefined) return undefined;
+   let foundMacro = matchingMacros[0];
 
    let ReplaceTo = `   ${foundMacro.Id} ${orig}`;   
 
@@ -2029,6 +2018,37 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
    // console.log(`ReplaceTo=${ReplaceTo}`);
 
    return ReplaceTo;
+}
+
+function isMatchingMacroParameters(mparms: string[], list: string[]) {
+   for(let t=0; t<mparms.length; t++) {
+      let macrop = mparms[t];
+      let actualp = list[t];      
+      if(!isGoodMacroParameter(macrop, actualp)) return false;
+   }
+   return true;
+}
+
+function isGoodMacroParameter(macrop: string, actualp: string) {
+   if(`"${actualp}"` === macrop) 
+   {
+      return true;
+   }
+   else if(actualp == "CONST") 
+   {
+      if(macrop == "CONST") return true;
+      else return false;
+   }
+   else if(actualp.startsWith("(") && actualp.endsWith(")")) 
+   {
+      if(macrop == "INDIRECT") return true;  
+      else return false;       
+   }
+   else
+   {
+      if(macrop === "MEM") return true;
+      else return false;
+   }
 }
 
 /*
@@ -2110,15 +2130,10 @@ function IsSUB(Linea: string, nl: number): string | undefined
 
    let NomeSub = Trim(GetParm(Linea, " ", 1));
 
-   // toglie eventuale "()"
-   if(NomeSub.Length()>2 && NomeSub.SubString(NomeSub.Length()-1,2)=="()")
-   {
-      NomeSub = NomeSub.SubString(1,NomeSub.Length()-2);
-   }
-   else return undefined;
+   // impone terminazione con ()
+   if(!NomeSub.endsWith("()")) return undefined;
 
-   // non è una sub ma la macro "sub"
-   // if(NomeSub.AnsiPos(",")>0) return undefined;
+   NomeSub = NomeSub.SubString(1,NomeSub.Length()-2);
 
    let ReplaceTo = NomeSub+":";
    StackSub.Add(nl);   
@@ -2178,6 +2193,19 @@ function IsENDSUB(Linea: string, nl: number): string | undefined
    }
 
    return undefined;
+}
+
+// const id = value
+function IsConst(Linea: string, nl: number): string | undefined
+{      
+   const R = new RegExp(/\s*const\s+([_a-zA-Z0-9]+[_a-zA-Z0-9]*)\s+=\s+(.*)/gmi);
+   const match = R.exec(Linea);
+
+   if(match === null) return undefined;
+
+   const [ all, id, value ] = match;
+
+   return `${id} = ${value}`;
 }
 
 //---------------------------------------------------------------------------
@@ -3031,3 +3059,27 @@ function InitTokens()
 }
 
 main();
+
+
+/*
+Grammar:
+
+- comment
+- include
+- #ifdef, #ifndef, #if #else #endif
+- directives (org, processor)
+- basic start/end
+- sub/end sub
+- macro/endmacro
+- const id = expr
+- id = expr
+- do loop/for next/repeat until/exit do/for/repeat 
+- continue?
+- if then else
+- [label:] mnmemoic [args [, ...]]
+- [label:] byte [...]
+- [label:] word [...]
+- [label:] bitmap [...]
+- [label:] float [...]
+
+*/
