@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+// TODO dim/zeropage
+// TODO bye/word in #const
+// TODO slowly convert to nearley
+// TODO peehole optimizer
+// TODO on goto
+// TODO switch case
+// TODO parse line with nearley
+// TODO zero page pool ? 
+// TODO uses/preserve/lock?
+// TODO input in sub
 // TODO conditional include
 // TODO test suite with 6502.js and Z80.js
 // TODO float compiler with nearley
@@ -691,13 +701,21 @@ function ProcessFile()
       ReplaceTo = IsENDMACRO(Dummy, t); if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
    }
 
-   // substitute macros
-   for(t=0; t<L.Count; t++)
+   // substitute macros. substitution is repeated until all macro are expanded (recursively)
+   let replaced;
+   do
    {
-      let Dummy = L.Strings[t];
-      let ReplaceTo = IsMacroCall(Dummy, t);
-      if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
-   }
+      replaced = false;
+      for(t=0; t<L.Count; t++)
+      {
+         let Dummy = L.Strings[t];
+         let ReplaceTo = IsMacroCall(Dummy, t);
+         if(ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;      
+            replaced = true;
+         }
+      }
+   } while(replaced);
 
    // change § into newlines (needed for macros)   
    L.SetText(L.Text().replace(/§/g, "\n"));   
