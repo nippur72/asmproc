@@ -3,7 +3,7 @@
 // TODO dim/zeropage
 // TODO bye/word in #const
 // TODO slowly convert to nearley
-// TODO peehole optimizer
+// TODO peephole optimizer
 // TODO on goto
 // TODO switch case
 // TODO parse line with nearley
@@ -855,7 +855,6 @@ function ProcessFile()
          L.Strings[t] = ReplaceTo;
       }
    }   
-
 }
 
 function SplitToken(Linea: string, token: string)
@@ -1042,7 +1041,7 @@ function IsSelfModLabel(Linea: string, nl: number): string | undefined
    let match = R.exec(Linea);
    if(match !== null) {            
       const [all, leftside, varname, varparm, rightside] = match;      
-      let arg = (varparm === "" || varparm === null) ? "$0000" : varparm;
+      let arg = (varparm === undefined || varparm === "") ? "$0000" : varparm;
       let ReplaceTo = `${varname} = _${varname}+1 §_${varname}:${leftside} ${arg}${rightside}`;
       return ReplaceTo;
    }   

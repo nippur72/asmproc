@@ -808,7 +808,7 @@ function IsSelfModLabel(Linea, nl) {
     var match = R.exec(Linea);
     if (match !== null) {
         var all = match[0], leftside = match[1], varname = match[2], varparm = match[3], rightside = match[4];
-        var arg = (varparm === "" || varparm === null) ? "$0000" : varparm;
+        var arg = (varparm === undefined || varparm === "") ? "$0000" : varparm;
         var ReplaceTo = varname + " = _" + varname + "+1 \u00A7_" + varname + ":" + leftside + " " + arg + rightside;
         return ReplaceTo;
     }
