@@ -1,0 +1,271 @@
+; ======================================================
+; Macros for 16 bit operations
+; The suffix "16" is added to common opcodes, eg "add16"
+; Only the A register is used (except ld16 (indirect))
+; ======================================================
+
+; Summary
+;   add16, adc16
+;   sub16, sbc16
+;   inc16, dec16
+;   ld16
+;   cmp16
+;   shr16, shl16
+;   push16, pop16
+
+macro add16 mem, const
+    lda {1}
+    clc
+    adc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    #if {2} < 256
+       if carry then inc {1}+1
+    #else
+       adc #(({2})/256)
+       sta {1}+1
+    #endif    
+end macro
+
+macro add16 mem, mem
+    lda {1}
+    clc
+    adc {2}
+    sta {1}
+    lda {1}+1
+    adc {2}+1
+    sta {1}+1                    
+end macro
+
+macro add16 mem, const, "1"
+    lda {1}
+    sec
+    adc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    adc #({2}/256)
+    sta {1}+1                    
+end macro
+
+macro add16 mem, mem, "1"
+    lda {1}
+    sec
+    adc {2}
+    sta {1}
+    lda {1}+1
+    adc {2}+1
+    sta {1}+1                    
+end macro
+    
+macro adc16 mem, const
+    lda {1}
+    adc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    #if {2} < 256
+       bcc .local_out
+       inc {1}+1
+    #else
+       adc #(({2})/256)
+       sta {1}+1
+    #endif
+    .local_out:    
+end macro
+
+macro adc16 mem, mem
+    lda {1}
+    adc {2}
+    sta {1}
+    lda {1}+1
+    adc {2}+1
+    sta {1}+1                    
+end macro
+
+macro sub16 mem, const
+    lda {1}
+    sec
+    sbc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    sbc #(({2})/256)
+    sta {1}+1                    
+end macro
+
+macro sub16 mem, mem
+    lda {1}
+    sec
+    sbc {2}
+    sta {1}
+    lda {1}+1
+    sbc {2}+1
+    sta {1}+1                    
+end macro
+
+macro sub16 mem, const, "1"
+    lda {1}
+    clc
+    sbc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    sbc #(({2})/256)
+    sta {1}+1                    
+end macro
+
+macro sub16 mem, mem, "1"
+    lda {1}
+    clc
+    sbc {2}
+    sta {1}
+    lda {1}+1
+    sbc {2}+1
+    sta {1}+1                    
+end macro
+    
+macro sbc16 mem, const
+    lda {1}
+    sbc #(({2}) MOD 256)
+    sta {1}
+    lda {1}+1
+    sbc #(({2})/256)
+    sta {1}+1                    
+end macro
+
+macro sbc16 mem, mem
+    lda {1}
+    sbc {2}
+    sta {1}
+    lda {1}+1
+    sbc {2}+1
+    sta {1}+1                    
+end macro
+
+macro inc16 mem
+    inc {1}
+    if zero then inc {1}+1
+end macro
+
+macro dec16 mem
+    dec {1}
+    if negative then dec {1}+1
+end macro
+
+macro ld16 mem, const
+   lda #(({2}) MOD 256)
+   sta {1}
+   #if (({2}) MOD 256) != (({2})/256)
+      lda #(({2})/256)
+   #endif   
+   sta {1}+1   
+end macro
+
+macro ld16 mem, mem
+    lda {2}
+    sta {1}
+    lda {2}+1
+    sta {1}+1
+end macro
+
+macro ld16 "ay", const
+    lda #(({1}) MOD 256)
+    ldy #(({1})/256)
+end macro
+
+macro ld16 "ay", mem
+    lda {1}
+    ldy {1}+1
+end macro
+
+macro ld16 "ax", const
+    lda #(({1}) MOD 256)
+    ldy #(({1})/256)
+end macro
+
+macro ld16 "ax", mem
+    lda {1}
+    ldy {1}+1
+end macro
+
+macro ld16 mem, "ay"
+    sta {1}
+    sty {1}+1
+end macro
+
+macro ld16 mem, "ax"
+    sta {1}
+    stx {1}+1
+end macro
+
+macro ld16 indirect, mem
+    ldy #0
+    lda {2}
+    sta ({1}),y
+    lda {2}+1
+    iny
+    sta ({1}),y
+end macro
+
+macro ld16 indirect, const
+    ldy #0
+    lda #({2} MOD 256)    
+    sta ({1}),y
+    lda #({2}/256)
+    iny
+    sta ({1}),y
+end macro
+
+macro cmp16 mem, const
+   lda {1}+1
+   cmp #(({2})/256)
+   if zero then 
+      lda {1}
+      cmp #(({2}) MOD 256)
+   end if
+end macro
+        
+macro cmp16 mem, mem
+   lda {1}+1
+   cmp {2}+1
+   if zero then
+      lda {1}
+      cmp {2}
+   end if
+end macro
+            
+macro shl16 mem
+    asl {1}
+    rol {1}+1
+end macro
+
+macro shr16 mem
+    lsr {1}
+    ror {1}+1
+end macro
+
+macro push16 mem
+    lda {1}
+    pha
+    lda {1}+1
+    pha
+end macro
+        
+macro push16 const
+    lda #(({1}) MOD 256)
+    pha
+    lda #(({1})/256)
+    pha
+end macro
+
+macro pop16 mem
+    pla 
+    sta {1}+1
+    pla 
+    sta {1}
+end macro
+
+macro mul16 mem, const
+   ECHO "to be implemented"
+end macro
+
+macro mul16 mem, mem
+   ECHO "to be implemented"
+end macro

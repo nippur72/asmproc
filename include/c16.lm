@@ -1,0 +1,84 @@
+C16 = 1 
+
+; Kernal entries 
+
+GETIN   = $ffe4     ; getin rom kernel routine
+CLRSCN  = $d88b     ; clear screen
+PRNSTR  = $9088     ; print string in A/Y, 0 terminated
+GOHOME  = $d89a     ; go home
+PRNINT  = $8b40     ; print integer in A/X
+
+; zero page
+
+CURSOR_PTR = 200
+CRSRCOL    = 1339
+
+; color costants
+
+COLOR_BLACK   = 0
+COLOR_WHITE   = 1
+COLOR_RED     = 2
+COLOR_CYAN    = 3
+COLOR_MAGENTA = 4
+COLOR_GREEN   = 5
+COLOR_BLUE    = 6
+COLOR_YELLOW  = 7
+// TODO add rest of C16 colors?
+
+; screen costants
+
+SCREEN_COLS  = 40
+SCREEN_ROWS  = 25
+VIDEO_RAM    = $0C00
+COLOR_RAM    = $0800
+COLOR_PAGE_OFFSET = (($ffff + COLOR_RAM - VIDEO_RAM) / 256) + 1
+
+; useful macros
+    
+MACRO cls
+   jsr CLRSCN
+END MACRO	 
+    
+; in commodore-16 the print string routine works differently 
+; than VIC-20 / C64. The cursor_ptr needs to be initialized
+; to start of line, then location 202 and 205 must be set
+; with column and row.
+    
+MACRO print
+print_col   SET [[[{1}_pos]-VIDEO_RAM]%SCREEN_COLS]
+print_row   SET [[[{1}_pos]-VIDEO_RAM]/SCREEN_COLS]    
+print_vadrr SET [{1}_pos]-print_col        
+       lda #[print_vadrr MOD 256]
+       sta cursor_ptr
+       lda #[print_vadrr/256]       
+       sta cursor_ptr+1 
+       
+       lda #print_col
+       sta 202
+       lda #print_row
+       sta 205 
+                                   
+       lda #[{1} MOD 256]
+       ldy #[{1}/256]
+       jsr my_print          
+END MACRO 
+       
+MACRO waitkey
+   pha 
+   txa : pha
+   tya : pha
+   do        
+      jsr GETIN
+   loop while zero
+   pla : tay   
+   pla : tax
+   pla      
+END MACRO
+
+MACRO color const
+   ld CRSRCOL, #{1}   
+END MACRO
+
+MACRO color mem
+   ld CRSRCOL, {1}
+END MACRO

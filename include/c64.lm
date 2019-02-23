@@ -1,0 +1,95 @@
+C64 = 1
+
+; Kernal entries 
+
+GETIN   = $ffe4     ; getin rom kernel routine
+CLRSCN  = $e544     ; clear screen
+PRNSTR  = $ab1e     ; print string in A/Y, 0 terminated
+GOHOME  = $e566     ; go home
+PRNINT  = $bdcd     ; print integer in A/X
+
+; zero page & low ram
+
+CURSOR_PTR  = 209
+JIFFY_CLOCK = 162
+CRSRCOL     = 646
+MEMORY_CONFIG = 1
+
+; color costants
+
+COLOR_BLACK   = 0
+COLOR_WHITE   = 1
+COLOR_RED     = 2
+COLOR_CYAN    = 3
+COLOR_MAGENTA = 4
+COLOR_GREEN   = 5
+COLOR_BLUE    = 6
+COLOR_YELLOW  = 7
+// TODO add rest of C64 colors
+
+; screen costants
+
+const SCREEN_COLS  = 40
+const SCREEN_ROWS  = 25
+const VIDEO_RAM    = 1024
+const COLOR_RAM    = 55296
+const COLOR_PAGE_OFFSET = ((COLOR_RAM - VIDEO_RAM) / 256)
+const BASIC_RAM   = 2049
+const RASTER      = $d012
+const ROMCHAR     = $D000
+const BORDER      = 53280
+const BACKGROUND  = 53281
+
+; useful macros
+    
+MACRO cls
+   jsr CLRSCN
+END MACRO	 
+    
+MACRO print
+   lda #[[{1}_pos]%256]
+   sta cursor_ptr
+   lda #[[{1}_pos]/256]
+   sta cursor_ptr+1 
+   lda #[{1}%256]
+   ldy #[{1}/256]
+   jsr PRNSTR
+   #ifdef VIC20 || C64 then jsr GOHOME         
+END MACRO 
+       
+MACRO waitkey
+   pha 
+   txa : pha
+   tya : pha
+   do        
+      jsr GETIN
+   loop while zero
+   pla : tay   
+   pla : tax
+   pla      
+END MACRO
+
+MACRO color const
+   ld CRSRCOL, #{1}   
+END MACRO
+
+MACRO color mem
+   ld CRSRCOL, {1}
+END MACRO
+
+MACRO set_border mem
+   ld BORDER, {1}
+END MACRO
+
+MACRO set_border const
+   ld BORDER, #{1}
+END MACRO
+
+MACRO set_background mem
+   ld BACKGROUND, {1}
+END MACRO
+
+MACRO set_background const
+   ld BACKGROUND, #{1}
+END MACRO
+

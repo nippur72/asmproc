@@ -1,0 +1,238 @@
+// TODO add switches for VIC20/C64/OTHER
+
+; =============== floating point macros =======================
+
+#ifdef VIC20 || C64
+   const INDEX1 = $0022   ; First utility pointer
+   const INDEX2 = $0024   ; Second utility pointer
+   const TEMPF1 = $0057   ; Temporary FLPT storage
+   const TEMPF2 = $005C   ; Temporary FLPT storage
+   const TEMPF3 = $004E   ; Temporary FLPT storage
+   const FAC    = $0061   ; Floating-point Accumulator (FAC)
+   const AFAC   = $0069   ; Alternative/Auxilary FAC
+#endif
+
+; =============== summary of implemented macros ===============
+
+/*
+   fprint fac              ; prints number in FAC
+   
+   fld fac, (ay)           ; loads FAC with number pointed by A/Y
+   fld fac, tempf1         ; stores FAC in tempf1
+   fld fac, tempf2         ; stores FAC in tempf2
+   fld fac, mem            ; loads FAC with number stored in memory
+   fld afac, (ay)          ; loads AFAC with number pointed by A/Y
+   fld afac, mem           ; loads AFAC with number stored in memory
+   fld mem, fac            ; stores FAC in memory
+   fld (xy), fac           ; stores FAC in memory pointed by xy
+   fld afac, fac           ; loads AFAC from FAC
+   fld fac, afac           ; loads FAC from AFAC
+
+	int2float ay, fac       ; loads FAC from integer in ay (0-32768)
+	int2float y, fac        ; loads FAC with integer in y (0-255)
+
+	str2float               ; Convert string starting at (INDEX1) of length (A) to FLPT in (FAC)
+
+	float2int fac, ay       ; Convert (FAC) to integer in (A/Y)
+	float2int fac, (index1)	; Convert FAC to integer in (INDEX1) in range 0 to 65535
+	float2int fac, mem      ; Convert FAC to integer in memory in range 0 to 65535
+	float2str fac           ; Convert FAC to ASCII string starting at STACK ($0100) and ending with null byte. 
+
+   fsub afac, fac          ; subract FAC from AFAC   
+	fsub (ay), fac          ; subract FAC from number pointed by ay
+	fadd fac, (ay)          ; add FAC with number pointed by ay
+	fadd fac, afac          ; add FAC with AFAC	
+	fmul fac, (ay)          ; multiply FAC with number pointed by ay
+	fmul fac, 10            ; multiply FAC by 10
+	fdiv fac, 10            ; divide FAC by 10
+   fdiv fac, (ay)          ; Divide (AFAC) by MFLPT value at (A/Y), sign in (X), answer to (FAC).	
+	fcmp                    ; Find sign of (FAC), result in A: $01 = positive, $00 = zero, $FF = negative.
+   fcmp (ay)               ; Compares (FAC) with number in AY, result in A: $01 = positive, $00 = zero, $FF = negative.
+   fcmp mem                ; Compares (FAC) with number in memory, result in A: $01 = positive, $00 = zero, $FF = negative.
+	fabs fac   	            ; Perform ABS
+	fround fac              ; Perform INT function, convert (FAC) to integer and back to FLPT format again.		
+	fneg                    ; Negate FAC
+  
+*/
+
+; prints number in FAC
+macro fprint 
+   jsr $dddd
+   lda #00
+   ldy #01
+   jsr $cb1e
+end macro
+    		
+macro fld "fac", "(ay)"
+   jsr $dba2
+end macro
+
+macro fld "afac", "(ay)"
+   jsr $da8c
+end macro
+	
+macro fld "fac", "tempf2"
+   jsr $dbc7
+end macro 
+	
+macro fld "fac", "tempf1"
+   jsr $dbca
+end macro	
+	
+macro fld "(xy)", "fac"
+   jsr $dbd4
+end macro
+		
+macro fld "fac", "afac"
+   jsr $dbfc
+end macro
+	
+macro fld "afac", "fac"
+      jsr $dc0c
+end macro
+
+macro fld mem, "fac"
+   ldx #[{1}%256]
+   ldy #[{1}/256]
+   jsr $dbd4 	   
+end macro
+
+macro fld "afac", mem
+      lda #[{2}%256]
+      ldy #[{2}/256]
+      jsr $da8c
+end macro
+
+macro fld "fac", mem
+   lda #[{2}%256]
+   ldy #[{2}/256]
+   jsr $dba2
+end macro
+
+; Convert integer in (A/Y) to FLPT in (FAC) within range 0 to 32767.
+macro int2float "ay"
+   jsr $D391
+end macro 
+
+; Convert (Y) to FLPT in (FAC) within range 0 to 255.
+macro int2float "y"
+      jsr $d3a2
+end macro
+
+; Convert string starting at (INDEX1) of length (A) to FLPT in (FAC)
+macro str2float 
+   jsr $$d7b5
+end macro
+
+; Convert (FAC) to integer in (A/Y)
+macro float2int "fac", "ay"
+   jsr $D1AA
+end macro
+   
+; Convert FAC to integer in (INDEX1) in range 0 to 65535
+macro float2int "fac", "(index1)"
+   jsr $D7F7
+end macro
+
+; Convert FAC to integer in memory in range 0 to 65535
+macro float2int "fac", mem
+   lda #[mem%256]
+   sta index1
+   lda #[mem/256]
+   sta index1+1
+   jsr $d7f7	    
+end macro
+
+; Convert FAC to ASCII string starting at STACK ($0100) and ending with null byte. 
+macro float2str "fac"
+   jsr $DDDD
+end macro
+      
+; FAC = AFAC - FAC 	 
+macro fsub "afac", "fac"
+   jsr $d853
+end macro
+
+macro fsub "(ay)","fac"
+   jsr $d850
+end macro
+
+macro fsub mem, "fac"
+   lda #[{1}%256]
+   ldy #[{1}/256]
+   jsr $d850
+end macro
+
+macro fadd "fac", "(ay)"
+   jsr $d867
+end macro
+
+macro fadd "fac", mem
+   lda #[{2}%256]
+   ldy #[{2}/256]
+   jsr $d867
+end macro
+
+macro fadd "fac", "afac"
+   ...
+end macro
+
+macro fmul "fac", "(ay)"
+   jsr $da28
+end macro
+
+macro fmul "fac", mem
+   lda #[{2}%256]
+   ldy #[{2}/256]
+   jsr $da28
+end macro
+
+macro fmul "fac", "10"
+   jsr $dae2
+end macro
+
+macro fdiv "fac", "10"
+   jsr $dafe
+end macro
+
+; Divide (AFAC) by MFLPT value at (A/Y), sign in (X), answer to (FAC).
+macro fdiv "afac", "(ay)"
+   jsr $db07
+end macro
+
+; Divide (AFAC) by mem, sign in (X), answer to (FAC).
+macro fdiv "afac", mem
+   lda #[{2}%256]
+   ldy #[{2}/256]
+   jsr $db07
+end macro
+
+; Find sign of (FAC), result in A: $01 = positive, $00 = zero, $FF = negative.
+macro fcmp 
+   jsr $dc2b
+end macro
+
+macro fabs "fac"
+   jsr $dc58
+end macro
+
+macro fcmp "(ay)"
+   jsr $dc5b
+end macro 
+
+macro fcmp mem
+   lda #[{1}%256]
+   ldy #[{1}/256]
+   jsr $dc5b
+end macro 
+
+; Perform INT function, convert (FAC) to integer and back to FLPT format again.
+macro fround "fac"
+   jsr $dccc
+end macro
+
+; Negate FAC
+macro fneg
+   jsr $dFB4
+end macro	
+	

@@ -1,0 +1,168 @@
+;
+; Aliases 
+;
+
+MACRO poke mem, const
+   lda #{2}
+   sta {1}
+END MACRO
+
+MACRO call mem
+   jsr {1}
+END MACRO
+
+macro shl
+   asl {0}
+end macro
+
+macro shr
+   lsr {0}
+end macro          
+
+macro ret
+   rts
+end macro
+
+macro push "a"           
+   pha
+end macro     
+
+macro pop "a"
+   pla
+end macro     
+
+macro or mem
+   ora {1}
+end macro
+
+macro or const
+   ora #{1}
+end macro
+
+;
+; Easy loads
+;
+
+macro ld "a", mem
+    lda {2}
+end macro
+
+macro ld "a", const
+    lda #{2}
+end macro
+
+macro ld "a", indirect
+    ldy #0
+    lda {2},y
+end macro
+
+macro ld "x", mem
+    ldx {2}
+end macro
+
+macro ld "x", const
+    ldx #{2}
+end macro
+
+macro ld "y", mem
+    ldy {2}
+end macro
+
+macro ld "y", const
+    ldy #{2}
+end macro
+
+macro ld mem, "a"
+    sta {1}
+end macro
+
+macro ld mem, "x"
+    stx {1}
+end macro
+
+macro ld mem, "y"
+    sty {1}
+end macro
+
+macro ld "a", "x"
+    txa
+end macro
+
+macro ld "a", "y"
+    tya
+end macro
+
+macro ld "x", "a"
+    tax
+end macro
+
+macro ld "y", "a"
+    tay
+end macro
+
+macro ld mem, mem
+    lda {2}    
+    sta {1}
+end macro
+
+macro ld mem, const
+    lda #{2}
+    sta {1}
+end macro
+
+macro ld indirect, "a"
+    ldy #0
+    sta {1},y
+end macro
+
+;
+; Easy add and sub
+;
+
+MACRO add mem
+   clc
+   adc {1}
+END MACRO
+
+MACRO add const
+   clc
+   adc #{1}
+END MACRO
+
+MACRO add mem, const
+   clc
+   lda {1}
+   adc #{2}
+   sta {1}
+END MACRO
+
+MACRO add mem, mem
+   clc
+   lda {1}
+   adc {2}
+   sta {1}
+END MACRO
+
+MACRO sub mem
+   sec
+   sbc {1}
+END MACRO
+
+MACRO sub const
+   sec
+   sbc #{1}
+END MACRO
+
+MACRO sub mem, const
+   sec
+   lda {1}
+   sbc #{2}
+   sta {1}
+END MACRO
+
+MACRO sub mem, mem
+   sec
+   lda {1}
+   sbc {2}
+   sta {1}
+END MACRO

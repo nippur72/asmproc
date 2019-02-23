@@ -1,0 +1,75 @@
+VIC20 = 1 
+
+; Kernal entries
+
+GETIN   = $ffe4     ; getin rom kernel routine
+CLRSCN  = $e55f     ; clear screen
+PRNSTR  = $cb1e     ; print string in A/Y, 0 terminated
+GOHOME  = $e581     ; go home
+PRNINT  = $ddcd     ; print integer in A/X
+SCNKEY  = $ff9f     ; scnkey rom kernel routine
+
+; zero page & low ram
+
+CURSOR_PTR  = 209
+JIFFY_CLOCK = 162
+CRSRCOL     = 646
+
+; color costants
+
+COLOR_BLACK   = 0
+COLOR_WHITE   = 1
+COLOR_RED     = 2
+COLOR_CYAN    = 3
+COLOR_MAGENTA = 4
+COLOR_GREEN   = 5
+COLOR_BLUE    = 6
+COLOR_YELLOW  = 7
+
+; screen costants
+
+const SCREEN_COLS  = 22
+const SCREEN_ROWS  = 23
+const VIDEO_RAM    = 7680
+const COLOR_RAM    = 38400
+const COLOR_PAGE_OFFSET = ((COLOR_RAM - VIDEO_RAM) / 256)
+const BASIC_RAM    = 4097
+const RASTER       = $9004
+const ROMCHAR      = 32768
+
+; useful macros
+    
+MACRO cls
+   jsr CLRSCN
+END MACRO	 
+    
+MACRO print
+   lda #[[{1}_pos]%256]
+   sta cursor_ptr
+   lda #[[{1}_pos]/256]
+   sta cursor_ptr+1 
+   lda #[{1}%256]
+   ldy #[{1}/256]
+   jsr PRNSTR
+   #ifdef VIC20 || C64 then jsr GOHOME         
+END MACRO 
+       
+MACRO waitkey
+   pha 
+   txa : pha
+   tya : pha
+   do        
+      jsr GETIN
+   loop while zero
+   pla : tay   
+   pla : tax
+   pla      
+END MACRO
+
+MACRO color const
+   ld CRSRCOL, #{1}   
+END MACRO
+
+MACRO color mem
+   ld CRSRCOL, {1}
+END MACRO
