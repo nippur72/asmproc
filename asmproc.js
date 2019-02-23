@@ -526,9 +526,9 @@ function ProcessFile() {
                 replaced = true;
             }
         }
+        // change § into newlines (needed for macros)   
+        L.SetText(L.Text().replace(/§/g, "\n"));
     } while (replaced);
-    // change § into newlines (needed for macros)   
-    L.SetText(L.Text().replace(/§/g, "\n"));
     // scan for repeat ... until then
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
