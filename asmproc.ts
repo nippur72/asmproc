@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// TODO macro in if single
 // TODO dim/zeropage
 // TODO bye/word in #const
 // TODO slowly convert to nearley
@@ -36,6 +37,8 @@
 // TODO macro fix literal value call
 // TODO bitmap for c64 sprites
 // TODO cc65
+// TODO basic tokenizer: {cm } as {cbm}
+// TODO basic tokenizer: ? as print
 // TODO basic tokenizer: c64 colors
 // TODO basic tokenizer: alternate names (wht -> white)
 // TODO basic tokenizer: {rev shift} ?
@@ -700,28 +703,9 @@ function ProcessFile()
       ReplaceTo = IsMACRO(Dummy,    t); if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
       ReplaceTo = IsENDMACRO(Dummy, t); if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
    }
-
-   // substitute macros. substitution is repeated until all macro are expanded (recursively)
-   let replaced;
-   do
-   {
-      replaced = false;
-      for(t=0; t<L.Count; t++)
-      {
-         let Dummy = L.Strings[t];
-         let ReplaceTo = IsMacroCall(Dummy, t);
-         if(ReplaceTo !== undefined) {
-            L.Strings[t] = ReplaceTo;      
-            replaced = true;
-         }
-      }
-
-      // change § into newlines (needed for macros)   
-      L.SetText(L.Text().replace(/§/g, "\n"));   
-
-   } while(replaced);
-
    
+   substitute_macro(L);
+
    // scan for repeat ... until then
    for(t=0; t<L.Count; t++)
    {
@@ -786,6 +770,9 @@ function ProcessFile()
    // change § into newlines (needed after IF-THEN <statement>)
    L.SetText(L.Text().replace(/§/g, "\n"));
 
+   // do another macro substitition for macro in if-single
+   substitute_macro(L);
+
    // scan for if then
    for(t=0;t<L.Count;t++)
    {
@@ -811,6 +798,14 @@ function ProcessFile()
    {
       let Dummy = L.Strings[t];
     	let ReplaceTo = IsBitmap(Dummy, t);
+      if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
+   }
+
+   // sprite values
+   for(t=0;t<L.Count;t++)
+   {
+      let Dummy = L.Strings[t];
+    	let ReplaceTo = IsSprite(Dummy, t);
       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
    }
 
@@ -894,6 +889,28 @@ function GetToken(Linea: string, Separator: string)
 function Label(Header: string, nr: number, suffix: string)
 {
    return `${Header}_${nr}_${suffix}`;
+}
+
+function substitute_macro(L: TStringList) {
+   // substitute macros. substitution is repeated until all macro are expanded (recursively)
+   let replaced;
+   do
+   {
+      replaced = false;
+      for(let t=0; t<L.Count; t++)
+      {
+         let Dummy = L.Strings[t];
+         let ReplaceTo = IsMacroCall(Dummy, t);
+         if(ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;      
+            replaced = true;
+         }
+      }
+
+      // change § into newlines (needed for macros)   
+      L.SetText(L.Text().replace(/§/g, "\n"));   
+
+   } while(replaced);
 }
 
 function IsIFSINGLE(Linea: string, nl: number): string | undefined
@@ -1672,12 +1689,21 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
       return undefined;
    }
 
+   let byteval = bitmapToByte(Argomento);
+
+   let ReplaceTo = `   ${BYTE} ${byteval}`;
+   return ReplaceTo;
+}
+
+function bitmapToByte(bmp: string) 
+{
    let byteval = 0;
-   if(Argomento.Length()==8)
+   if(bmp.Length()==8)
    {
+     // mono
      for(let t=1,pos=128;t<=8;t++,pos=pos>>1)
      {
-        let c = Argomento.CharAt(t);
+        let c = bmp.CharAt(t);
         if(c!='.' && c!='-' && c!='0')
         {
            byteval = byteval | pos;
@@ -1686,9 +1712,10 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
    }
    else
    {
+     // multicolor 
      for(let t=1,pos=6;t<=4;t++,pos-=2)
      {
-        let c = Argomento.CharAt(t);
+        let c = bmp.CharAt(t);
         let code = 0b00;
         
         if(c=='1' || c=='B') code = 0b01;
@@ -1698,10 +1725,44 @@ function IsBitmap(Linea: string,  nl: number): string | undefined
         byteval = byteval | (code<<pos);
      }
    }
-
-   let ReplaceTo = `   ${BYTE} ${byteval}`;
-   return ReplaceTo;
+   return byteval;
 }
+
+function IsSprite(Linea: string,  nl: number): string | undefined
+{
+   const R = new RegExp(/^\s*sprite\s+(.+)\s*$/igm);
+   const match = R.exec(Linea);
+   if(match === null) return undefined;
+
+   const [all, value] = match;
+
+   let Argomento = Trim(value);
+
+   if(Argomento.Length()!=4*3 && Argomento.Length()!=8*3)
+   {
+      error(`invalid BITMAP value: "${Argomento}" linea=${Linea}`);
+      return undefined;
+   }
+
+   if(Argomento.Length() === 8*3)
+   {
+      let b1 = bitmapToByte(Argomento.substr(0+0*8, 8));
+      let b2 = bitmapToByte(Argomento.substr(0+1*8, 8));
+      let b3 = bitmapToByte(Argomento.substr(0+2*8, 8));
+      let ReplaceTo = `   ${BYTE} ${b1},${b2},${b3}`;
+      return ReplaceTo;
+   }
+
+   if(Argomento.Length() === 4*3)
+   {
+      let b1 = bitmapToByte(Argomento.substr(0+0*4, 4));
+      let b2 = bitmapToByte(Argomento.substr(0+1*4, 4));
+      let b3 = bitmapToByte(Argomento.substr(0+2*4, 4));
+      let ReplaceTo = `   ${BYTE} ${b1},${b2},${b3}`;
+      return ReplaceTo;
+   }   
+}
+
 
 // taken from http://locutus.io/c/math/frexp/
 function frexp(arg: number) {
