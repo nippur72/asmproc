@@ -10,6 +10,7 @@
     "build": "tsc",
     "test": "node asmproc -i test/repeat.lm -o test/repeat.out",
     "ncc": "nearleyc const.ne -o const.js",
+    "nce": "nearleyc expressions.ne -o expressions.js",
     "ncg": "nearleyc grammar.ne -o grammar.js",
     "nt": "nearley-test -i 3*4+1 expressions.js"
   },
