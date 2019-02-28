@@ -284,6 +284,28 @@ Example:
   bitmap  ........
 ```
 
+## C64 SPRITE BITMAP CHARACTER CONSTANTS
+
+Define bitmap values for Commodore 64 sprites (3 bytes per row).
+
+```    
+bitmap <code>
+```
+
+For single-color `<code>` is 24-character wide
+```
+- "." or "-" or "0" equals to bit 0
+- any other character equals to bit 1
+```
+
+For multicolor `<code>` is 12-character wide
+```
+- "." or "-" or "0" equals to bits 00  background color
+- "B" or "1"        equals to bits 01  border color
+- "F" or "2"        equals to bits 10  foreground color
+- "A" or "3"        equals to bits 11  auxiliary color 
+```
+
 ## FLOATING POINT CONSTANTS
 
 Defines a floating point constant in CBM format (5 bytes).

@@ -1,6 +1,6 @@
 {
   "name": "asmproc",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "",
   "main": "asmproc.js",
   "bin": {
@@ -9,13 +9,15 @@
   "scripts": {
     "build": "tsc",
     "test": "node asmproc -i test/repeat.lm -o test/repeat.out",
-    "nc": "nearleyc expressions.ne -o expressions.js",
+    "ncc": "nearleyc const.ne -o const.js",
+    "ncg": "nearleyc grammar.ne -o grammar.js",
     "nt": "nearley-test -i 3*4+1 expressions.js"
   },
   "author": "Antonino Porcino <nino.porcino@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "command-line-args": "^5.0.2",
+    "moo": "^0.5.0",
     "nearley": "^2.16.0"
   },
   "devDependencies": {

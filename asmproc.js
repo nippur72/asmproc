@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -80,21 +80,13 @@ var TStringList = /** @class */ (function (_super) {
     };
     return TStringList;
 }(TStack));
-function hex(value) {
-    return (value <= 0xF ? "0" : "") + value.toString(16);
-}
+exports.TStringList = TStringList;
 function ChangeFileExt(name, ext) {
     // taken from https://stackoverflow.com/questions/5953239/how-do-i-change-file-extension-with-javascript
     return name.replace(/\.[^\.]+$/, ext);
 }
 function FileExists(name) {
     return fs_1.default.existsSync(name);
-}
-function UpperCase(s) {
-    return s.toUpperCase();
-}
-function Trim(s) {
-    return s.trim();
 }
 function RemoveQuote(S) {
     return S.substr(1, S.length - 2);
@@ -143,65 +135,11 @@ var StackSub;
 var StackIf_U = new TStringList();
 var StackFor_U = new TStringList();
 var AllMacros = [];
-var basic_row;
-var BasicCompact;
-var TokensKeywords = {};
-var TokensText = {};
-var Ascii = {};
 var Ferr;
-var dasm = false;
-var ca65 = false;
-var z80asm = false;
-var cpu6502 = false;
-var cpuz80 = false;
-var JMP;
-var BYTE;
+var cross_1 = require("./cross");
+var utils_1 = require("./utils");
+var basic_1 = require("./basic");
 var defines;
-function parens(s) {
-    if (dasm)
-        return "[" + s + "]";
-    else if (ca65)
-        return "(" + s + ")";
-    else if (z80asm)
-        return "[" + s + "]";
-    throw "";
-}
-function notequal(a, b) {
-    if (dasm)
-        return a + "!=" + b;
-    else if (ca65)
-        return a + "<>" + b;
-    else if (z80asm)
-        return a + "<>" + b;
-    throw "";
-}
-function hibyte(byte) {
-    if (dasm)
-        return byte + "/256";
-    else if (ca65)
-        return ".HIBYTE(" + byte + ")";
-    else if (z80asm)
-        return byte + "/256";
-    throw "";
-}
-function lobyte(byte) {
-    if (dasm)
-        return byte + "%256";
-    else if (ca65)
-        return ".LOBYTE(" + byte + ")";
-    else if (z80asm)
-        return byte + "%256";
-    throw "";
-}
-function mod(value, div) {
-    if (dasm)
-        return value + "%" + div;
-    else if (ca65)
-        return value + " .MOD " + div;
-    else if (z80asm)
-        return value + "%" + div;
-    throw "";
-}
 function error(msg, cline) {
     if (cline !== undefined) {
         error(msg + " in line " + cline + " of " + Ferr);
@@ -213,6 +151,7 @@ function error(msg, cline) {
         L.SaveToFile(Ferr);
     process.exit(-1);
 }
+exports.error = error;
 function main() {
     var options = parseOptions([
         { name: 'input', alias: 'i', type: String },
@@ -226,26 +165,11 @@ function main() {
         return;
     }
     // set target
-    dasm = options.target === "dasm";
-    ca65 = options.target === "ca65";
-    z80asm = options.target === "z80asm";
-    cpu6502 = dasm || ca65;
-    cpuz80 = z80asm;
-    if (cpu6502) {
-        JMP = "JMP";
-    }
-    if (cpuz80) {
-        JMP = "JP ";
-    }
-    if (dasm) {
-        BYTE = "byte";
-    }
-    if (ca65) {
-        BYTE = ".byte";
-    }
-    if (z80asm) {
-        BYTE = "defb";
-    }
+    cross_1.target.dasm = options.target === "dasm";
+    cross_1.target.ca65 = options.target === "ca65";
+    cross_1.target.z80asm = options.target === "z80asm";
+    cross_1.target.cpu6502 = cross_1.target.dasm || cross_1.target.ca65;
+    cross_1.target.cpuz80 = cross_1.target.z80asm;
     defines = options.define === undefined ? [] : options.define.split(",");
     L = new TStringList();
     var FName = options.input;
@@ -265,9 +189,6 @@ function main() {
     StackSub = new TStack();
     StackIf_U = new TStringList();
     StackFor_U = new TStringList();
-    basic_row = 0;
-    BasicCompact = false;
-    InitTokens();
     L.LoadFromFile(FName);
     ProcessFile();
     L.SaveToFile(FOut);
@@ -324,11 +245,11 @@ function RemoveComments() {
         if (match !== null) {
             var all = match[0], purged = match[1], comment = match[2];
             // special case of ; comment in BASIC START / BASIC END
-            if (IsBasicStart(purged)) {
+            if (basic_1.IsBasicStart(purged)) {
                 inbasic = true;
                 L.Strings[t] = purged;
             }
-            else if (IsBasicEnd(purged)) {
+            else if (basic_1.IsBasicEnd(purged)) {
                 inbasic = false;
                 L.Strings[t] = purged;
             }
@@ -336,9 +257,9 @@ function RemoveComments() {
                 L.Strings[t] = purged;
         }
         else {
-            if (IsBasicStart(Linea))
+            if (basic_1.IsBasicStart(Linea))
                 inbasic = true;
-            if (IsBasicEnd(Linea))
+            if (basic_1.IsBasicEnd(Linea))
                 inbasic = false;
         }
     }
@@ -352,12 +273,7 @@ function ModOperator() {
             var match = R.exec(Linea);
             if (match !== null) {
                 var all = match[0], left = match[1], right = match[2];
-                if (dasm)
-                    L.Strings[t] = left + " % " + right;
-                if (ca65)
-                    L.Strings[t] = left + " .MOD " + right;
-                if (z80asm)
-                    L.Strings[t] = left + " % " + right;
+                L.Strings[t] = cross_1.MOD(left, right);
             }
             else
                 break;
@@ -366,10 +282,10 @@ function ModOperator() {
 }
 function ResolveInclude() {
     for (var t = 0; t < L.Count; t++) {
-        var Linea = UpperCase(Trim(L.Strings[t])) + " ";
-        var Include = GetParm(Linea, " ", 0);
+        var Linea = utils_1.UpperCase(utils_1.Trim(L.Strings[t])) + " ";
+        var Include = utils_1.GetParm(Linea, " ", 0);
         if (Include == "INCLUDE") {
-            var NomeFile = GetParm(Linea, " ", 1);
+            var NomeFile = utils_1.GetParm(Linea, " ", 1);
             if (NomeFile.length < 2) {
                 error("invalid file name \"" + NomeFile + "\" in include", t);
             }
@@ -412,7 +328,7 @@ function RemoveColon() {
 }
 function MakeAllUpperCase() {
     var Whole = L.Text();
-    L.SetText(UpperCase(Whole));
+    L.SetText(utils_1.UpperCase(Whole));
 }
 // spezza su piu linee #IFDEF / #IFNDEF su singola linea 
 function IsIFDEFSingle(Linea, nl) {
@@ -426,9 +342,9 @@ function IsIFDEFSingle(Linea, nl) {
 }
 // change assembler reserved keywords
 function IsReservedKeywords(Linea, nl) {
-    Linea = Trim(Linea);
+    Linea = utils_1.Trim(Linea);
     if (Linea.startsWith("#")) {
-        if (dasm || z80asm) {
+        if (cross_1.target.dasm || cross_1.target.z80asm) {
             Linea = Linea.replace("#IFDEF", "IFCONST");
             Linea = Linea.replace("#IFNDEF", "IFNCONST");
             Linea = Linea.replace("#IF", "IF");
@@ -438,7 +354,7 @@ function IsReservedKeywords(Linea, nl) {
             var ReplaceTo = " " + Linea;
             return ReplaceTo;
         }
-        else if (ca65) {
+        else if (cross_1.target.ca65) {
             Linea = Linea.replace("#IFDEF", ".IFDEF");
             Linea = Linea.replace("#IFNDEF", ".IFNDEF");
             Linea = Linea.replace("#IF", ".IF");
@@ -459,10 +375,13 @@ function ProcessFile() {
         if (!hasinclude)
             break;
     }
+    // remove \r new lines and tabs
+    L.SetText(L.Text().replace(/\r/g, ""));
+    L.SetText(L.Text().replace(/\t/g, "   "));
     // scan for basic, needs to be done first before of semicolon replacement
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
-        var ReplaceTo = IsBasic(Dummy, t);
+        var ReplaceTo = basic_1.IsBasic(L, Dummy, t);
         // IsBasic does replace by itself
         // if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;        
     }
@@ -610,35 +529,52 @@ function ProcessFile() {
     }
     if (!StackIf.IsEmpty)
         error("malformed IF");
+    /*
     // bitmap values
-    for (t = 0; t < L.Count; t++) {
-        var Dummy = L.Strings[t];
-        var ReplaceTo = IsBitmap(Dummy, t);
-        if (ReplaceTo !== undefined)
-            L.Strings[t] = ReplaceTo;
+    for(t=0;t<L.Count;t++)
+    {
+       let Dummy = L.Strings[t];
+         let ReplaceTo = IsBitmap(Dummy, t);
+       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
     }
+    */
+    /*
     // sprite values
+    for(t=0;t<L.Count;t++)
+    {
+       let Dummy = L.Strings[t];
+         let ReplaceTo = IsSprite(Dummy, t);
+       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
+    }
+    */
     for (t = 0; t < L.Count; t++) {
         var Dummy = L.Strings[t];
-        var ReplaceTo = IsSprite(Dummy, t);
+        var ReplaceTo = IsCombined(Dummy, t);
         if (ReplaceTo !== undefined)
             L.Strings[t] = ReplaceTo;
     }
+    /*
     // floating point values
-    for (t = 0; t < L.Count; t++) {
-        var Dummy = L.Strings[t];
-        var ReplaceTo = IsFloat(Dummy, t);
-        if (ReplaceTo !== undefined)
-            L.Strings[t] = ReplaceTo;
+    for(t=0;t<L.Count;t++)
+    {
+         let Dummy = L.Strings[t];
+       let ReplaceTo = IsFloat(Dummy, t);
+ 
+       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;
     }
+ 
     // substitute const
-    for (t = 0; t < L.Count; t++) {
-        var Dummy = L.Strings[t];
-        var ReplaceTo = IsConst(Dummy, t);
-        if (ReplaceTo !== undefined) {
-            L.Strings[t] = ReplaceTo;
-        }
+    for(t=0; t<L.Count; t++)
+    {
+     let Dummy = L.Strings[t];
+       let ReplaceTo = IsConst(Dummy, t);
+ 
+       if(ReplaceTo !== undefined)
+         {
+          L.Strings[t] = ReplaceTo;
+       }
     }
+    */
     // add defines on top of the file
     var definecode = defines.map(function (e) {
         if (e.indexOf("=") < 0)
@@ -657,30 +593,6 @@ function ProcessFile() {
             L.Strings[t] = ReplaceTo;
         }
     }
-}
-function SplitToken(Linea, token) {
-    return Linea.split(token);
-}
-function GetParm(Linea, token, num) {
-    var split = SplitToken(Linea, token);
-    if (split.length < num)
-        return "";
-    else
-        return split[num];
-}
-function GetToken(Linea, Separator) {
-    var Token;
-    var Rest;
-    var x = Linea.AnsiPos(Separator);
-    if (x == 0) {
-        Token = "";
-        Rest = Linea;
-    }
-    else {
-        Token = Linea.SubString(1, x - 1);
-        Rest = Linea.SubString(x + Separator.Length(), Linea.Length());
-    }
-    return { Token: Token, Rest: Rest };
 }
 function Label(Header, nr, suffix) {
     return Header + "_" + nr + "_" + suffix;
@@ -703,25 +615,25 @@ function substitute_macro(L) {
     } while (replaced);
 }
 function IsIFSINGLE(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
     var StringaIF;
     var StringaCond;
     var StringaAfterThen;
-    var G = GetToken(Linea, " ");
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     StringaIF = G.Token;
     if (StringaIF != "IF")
         return undefined;
-    G = GetToken(Linea, " THEN");
+    G = utils_1.GetToken(Linea, " THEN");
     Linea = G.Rest;
     StringaCond = G.Token;
     if (StringaCond == "")
         return undefined;
-    Linea = Trim(Linea);
+    Linea = utils_1.Trim(Linea);
     var LastPart = Linea;
-    G = GetToken(Linea + " ", " ");
+    G = utils_1.GetToken(Linea + " ", " ");
     Linea = G.Rest;
-    StringaAfterThen = Trim(G.Token);
+    StringaAfterThen = utils_1.Trim(G.Token);
     if (StringaAfterThen == "")
         return undefined; // if composto
     if (StringaAfterThen == "GOTO")
@@ -731,24 +643,24 @@ function IsIFSINGLE(Linea, nl) {
     return ReplaceTo;
 }
 function IsIF(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
     var StringaIF;
     var StringaCond;
     var StringaAfterThen;
-    var G = GetToken(Linea, " ");
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     StringaIF = G.Token;
     if (StringaIF != "IF")
         return undefined;
-    G = GetToken(Linea, " THEN");
+    G = utils_1.GetToken(Linea, " THEN");
     Linea = G.Rest;
     StringaCond = G.Token;
     if (StringaCond == "")
         return undefined;
-    Linea = Trim(Linea);
-    G = GetToken(Linea, " ");
+    Linea = utils_1.Trim(Linea);
+    G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
-    StringaAfterThen = Trim(G.Token);
+    StringaAfterThen = utils_1.Trim(G.Token);
     var ReplaceTo = "";
     if (StringaAfterThen == "GOTO") {
         // if then goto
@@ -774,8 +686,8 @@ function IsIF(Linea, nl) {
     return ReplaceTo;
 }
 function IsENDIF(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var G = GetToken(Linea, " ");
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var StringaENDIF = G.Token;
     if (StringaENDIF != "ENDIF" && !(StringaENDIF == "END" && Linea == "IF "))
@@ -793,8 +705,8 @@ function IsENDIF(Linea, nl) {
     return ReplaceTo;
 }
 function IsELSE(Linea, n) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var G = GetToken(Linea, " ");
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var StringaELSE = G.Token;
     if (StringaELSE != "ELSE")
@@ -803,12 +715,12 @@ function IsELSE(Linea, n) {
         error("ELSE without IF", n);
     }
     var nl = StackIf.Last();
-    var ReplaceTo = "\t" + JMP + " " + Label("IF", nl, "END") + "§" + Label("IF", nl, "ELSE") + ":";
+    var ReplaceTo = "\t" + cross_1.Jump(Label("IF", nl, "END")) + "§" + Label("IF", nl, "ELSE") + ":";
     return ReplaceTo;
 }
 function IsREPEAT(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaREPEAT = GetParm(Linea, " ", 0);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaREPEAT = utils_1.GetParm(Linea, " ", 0);
     if (StringaREPEAT != "REPEAT")
         return undefined;
     StackRepeat.Add(nl);
@@ -847,19 +759,19 @@ function IsEXITREPEAT(Linea, nl) {
         var n = StackRepeat.Last();
         var label = Label("REPEAT", n, "END");
         var all = match[0], spaces = match[1], exit_repeat = match[2];
-        var ReplaceTo = "" + spaces + JMP + " " + label;
+        var ReplaceTo = "" + spaces + cross_1.Jump(label);
         return ReplaceTo;
     }
 }
 function IsUNTIL(Linea, n) {
-    Linea = Trim(Linea);
-    var G = GetToken(Linea, " ");
+    Linea = utils_1.Trim(Linea);
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var StringaUNTIL = G.Token;
-    var StringaCond = Trim(Linea);
+    var StringaCond = utils_1.Trim(Linea);
     if (StringaCond == "")
         return undefined;
-    if (UpperCase(StringaUNTIL) != "UNTIL")
+    if (utils_1.UpperCase(StringaUNTIL) != "UNTIL")
         return undefined;
     if (StackRepeat.Count - 1 < 0) {
         error("UNTIL without REPEAT", n);
@@ -876,8 +788,8 @@ function IsUNTIL(Linea, n) {
     return ReplaceTo;
 }
 function IsDO(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaDO = GetParm(Linea, " ", 0);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaDO = utils_1.GetParm(Linea, " ", 0);
     if (StringaDO != "DO")
         return undefined;
     StackDo.Add(nl);
@@ -906,7 +818,7 @@ function IsEXITDO(Linea, nl) {
         var n = StackDo.Last();
         var label = Label("DO", n, "END");
         var all = match[0], spaces = match[1], exit_do = match[2];
-        var ReplaceTo = "" + spaces + JMP + " " + label;
+        var ReplaceTo = "" + spaces + cross_1.Jump(label);
         return ReplaceTo;
     }
 }
@@ -919,11 +831,11 @@ function IsLOOP(Linea, n) {
         error("DO without LOOP");
     var all = match[0], spaces = match[1], type = match[2], cond = match[3];
     var CondNot = true;
-    if (UpperCase(type) == "WHILE")
+    if (utils_1.UpperCase(type) == "WHILE")
         CondNot = false;
-    else if (UpperCase(type) == "IF")
+    else if (utils_1.UpperCase(type) == "IF")
         CondNot = false;
-    else if (UpperCase(type) == "UNTIL")
+    else if (utils_1.UpperCase(type) == "UNTIL")
         CondNot = true;
     var nl = StackDo.Pop();
     var _a = ParseCond(cond), Eval = _a.Eval, BranchNot = _a.BranchNot, Branch = _a.Branch;
@@ -941,16 +853,16 @@ function IsLOOP(Linea, n) {
     return ReplaceTo;
 }
 function IsWHILE(Linea, nl) {
-    Linea = Trim(Linea);
+    Linea = utils_1.Trim(Linea);
     var StringaWHILE;
     var StringaCond;
-    var G = GetToken(Linea, " ");
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     StringaWHILE = G.Token;
-    StringaCond = Trim(Linea);
+    StringaCond = utils_1.Trim(Linea);
     if (StringaCond == "")
         return undefined;
-    if (UpperCase(StringaWHILE) != "WHILE")
+    if (utils_1.UpperCase(StringaWHILE) != "WHILE")
         return undefined;
     var _a = ParseCond(StringaCond), Eval = _a.Eval, BranchNot = _a.BranchNot, Branch = _a.Branch;
     var Lab = Label("WHILE", nl, "END");
@@ -985,24 +897,24 @@ function IsEXITWHILE(Linea, nl) {
         var n = StackWhile.Last();
         var label = Label("WHILE", n, "END");
         var all = match[0], spaces = match[1], exit_while = match[2];
-        var ReplaceTo = "" + spaces + JMP + " " + label;
+        var ReplaceTo = "" + spaces + cross_1.Jump(label);
         return ReplaceTo;
     }
 }
 function IsWEND(Linea, n) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaWEND = GetParm(Linea, " ", 0);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaWEND = utils_1.GetParm(Linea, " ", 0);
     if (StringaWEND != "WEND")
         return undefined;
     if (StackWhile.IsEmpty)
         error("WEND without WHILE");
     var nl = StackWhile.Pop();
     ;
-    var ReplaceTo = "\t" + JMP + " " + Label("WHILE", nl, "START") + "§" + Label("WHILE", nl, "END") + ":";
+    var ReplaceTo = "\t" + cross_1.Jump(Label("WHILE", nl, "START")) + "§" + Label("WHILE", nl, "END") + ":";
     return ReplaceTo;
 }
 function IsFOR(Linea, nl) {
-    Linea = UpperCase(Trim(Linea));
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea));
     var StringaFOR;
     var StringaStart;
     var StringaEnd;
@@ -1011,22 +923,22 @@ function IsFOR(Linea, nl) {
     var StartValue;
     var StartIstruction;
     var StepInstruction = "";
-    var G = GetToken(Linea, " ");
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     StringaFOR = G.Token;
     if (StringaFOR != "FOR")
         return undefined;
-    G = GetToken(Linea, "TO");
+    G = utils_1.GetToken(Linea, "TO");
     Linea = G.Rest;
     StringaStart = G.Token;
-    StringaStart = Trim(StringaStart);
+    StringaStart = utils_1.Trim(StringaStart);
     if (StringaStart == "")
         return undefined;
-    G = GetToken(Linea, "STEP");
+    G = utils_1.GetToken(Linea, "STEP");
     Linea = G.Rest;
     StringaEnd = G.Token;
     if (StringaEnd != "") {
-        Step = Trim(Linea);
+        Step = utils_1.Trim(Linea);
         if (Step == "")
             return undefined;
     }
@@ -1034,11 +946,11 @@ function IsFOR(Linea, nl) {
         StringaEnd = Linea;
         Step = "#1";
     }
-    StringaEnd = Trim(StringaEnd);
+    StringaEnd = utils_1.Trim(StringaEnd);
     if (StringaEnd == "")
         return undefined;
     // find what register to use
-    G = GetToken(StringaStart, "=");
+    G = utils_1.GetToken(StringaStart, "=");
     StringaStart = G.Rest;
     Register = G.Token;
     StartValue = StringaStart;
@@ -1229,13 +1141,13 @@ function IsEXITFOR(Linea, nl) {
         var n = StackFor.Last();
         var label = Label("FOR", n, "END");
         var all = match[0], spaces = match[1], exit_for = match[2];
-        var ReplaceTo = "" + spaces + JMP + " " + label;
+        var ReplaceTo = "" + spaces + cross_1.Jump(label);
         return ReplaceTo;
     }
 }
 function IsNEXT(Linea, n) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaNEXT = GetParm(Linea, " ", 0);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaNEXT = utils_1.GetParm(Linea, " ", 0);
     if (StringaNEXT != "NEXT")
         return undefined;
     if (StackFor.IsEmpty)
@@ -1245,6 +1157,7 @@ function IsNEXT(Linea, n) {
     var ReplaceTo = StepCondition + "§" + Label("FOR", nl, "END") + ":";
     return ReplaceTo;
 }
+var cross_2 = require("./cross");
 function ParseCond(W) {
     var signedcond = false;
     var usinga = true;
@@ -1253,7 +1166,8 @@ function ParseCond(W) {
     var x;
     var Cast;
     var OriginalW = W;
-    W = UpperCase(Trim(W));
+    var cpu6502 = cross_1.target.cpu6502, cpuz80 = cross_1.target.cpuz80;
+    W = utils_1.UpperCase(utils_1.Trim(W));
     Cast = "(SIGNED)";
     x = W.AnsiPos(Cast);
     if (x > 0) {
@@ -1325,63 +1239,63 @@ function ParseCond(W) {
     var Register = "";
     var Operator = "";
     var Operand = "";
-    W = Trim(W);
+    W = utils_1.Trim(W);
     if (W.AnsiPos(">=") > 0) {
         Operator = ">=";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("<=") > 0) {
         Operator = "<=";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("<>") > 0) {
         Operator = "<>";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("!=") > 0) {
         Operator = "!=";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("==") > 0) {
         Operator = "==";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("=") > 0) {
         Operator = "=";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos(">") > 0) {
         Operator = ">";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("<") > 0) {
         Operator = "<";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
     else if (W.AnsiPos("IS") > 0) {
         Operator = "IS";
-        var G = GetToken(W, Operator);
+        var G = utils_1.GetToken(W, Operator);
         Register = G.Token;
         Operand = G.Rest;
     }
-    Operand = Trim(Operand);
-    Register = UpperCase(Trim(Register));
+    Operand = utils_1.Trim(Operand);
+    Register = utils_1.UpperCase(utils_1.Trim(Register));
     if (cpu6502) {
         if (Operator == "IS") {
             if (usinga)
@@ -1530,7 +1444,7 @@ function ParseCond(W) {
         else
             Operator = "#";
         if (Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") {
-            var expr = notequal(parens(RemoveHash(Operand)), "0");
+            var expr = cross_2.notequal(cross_2.parens(RemoveHash(Operand)), "0");
             Eval1 = "\u00A7#IF " + expr + "\u00A7" + Eval1 + "\u00A7#ENDIF\u00A7";
         }
         Eval = Eval + Eval1;
@@ -1592,213 +1506,184 @@ function ParseCond(W) {
     }
     return { Eval: Eval, BranchNot: BranchNot, Branch: Branch };
 }
-function IsBitmap(Linea, nl) {
-    var R = new RegExp(/^\s*bitmap\s+(.+)\s*$/igm);
-    var match = R.exec(Linea);
-    if (match === null)
-        return undefined;
-    var all = match[0], value = match[1];
-    var Argomento = Trim(value);
-    if (Argomento.Length() != 4 && Argomento.Length() != 8) {
-        error("invalid BITMAP value: \"" + Argomento + "\" linea=" + Linea);
-        return undefined;
-    }
-    var byteval = bitmapToByte(Argomento);
-    var ReplaceTo = "   " + BYTE + " " + byteval;
-    return ReplaceTo;
-}
-function bitmapToByte(bmp) {
-    var byteval = 0;
-    if (bmp.Length() == 8) {
-        // mono
-        for (var t = 1, pos = 128; t <= 8; t++, pos = pos >> 1) {
-            var c = bmp.CharAt(t);
-            if (c != '.' && c != '-' && c != '0') {
-                byteval = byteval | pos;
-            }
-        }
-    }
-    else {
-        // multicolor 
-        for (var t = 1, pos = 6; t <= 4; t++, pos -= 2) {
-            var c = bmp.CharAt(t);
-            var code = 0;
-            if (c == '1' || c == 'B')
-                code = 1;
-            if (c == '2' || c == 'F')
-                code = 2;
-            if (c == '3' || c == 'A')
-                code = 3;
-            byteval = byteval | (code << pos);
-        }
-    }
-    return byteval;
-}
-function IsSprite(Linea, nl) {
-    var R = new RegExp(/^\s*sprite\s+(.+)\s*$/igm);
-    var match = R.exec(Linea);
-    if (match === null)
-        return undefined;
-    var all = match[0], value = match[1];
-    var Argomento = Trim(value);
-    if (Argomento.Length() != 4 * 3 && Argomento.Length() != 8 * 3) {
-        error("invalid BITMAP value: \"" + Argomento + "\" linea=" + Linea);
-        return undefined;
-    }
-    if (Argomento.Length() === 8 * 3) {
-        var b1 = bitmapToByte(Argomento.substr(0 + 0 * 8, 8));
-        var b2 = bitmapToByte(Argomento.substr(0 + 1 * 8, 8));
-        var b3 = bitmapToByte(Argomento.substr(0 + 2 * 8, 8));
-        var ReplaceTo = "   " + BYTE + " " + b1 + "," + b2 + "," + b3;
-        return ReplaceTo;
-    }
-    if (Argomento.Length() === 4 * 3) {
-        var b1 = bitmapToByte(Argomento.substr(0 + 0 * 4, 4));
-        var b2 = bitmapToByte(Argomento.substr(0 + 1 * 4, 4));
-        var b3 = bitmapToByte(Argomento.substr(0 + 2 * 4, 4));
-        var ReplaceTo = "   " + BYTE + " " + b1 + "," + b2 + "," + b3;
-        return ReplaceTo;
-    }
-}
-// taken from http://locutus.io/c/math/frexp/
-function frexp(arg) {
-    //  discuss at: http://locutus.io/c/frexp/
-    // original by: Oskar Larsson Högfeldt (http://oskar-lh.name/)
-    //      note 1: Instead of
-    //      note 1: double frexp( double arg, int* exp );
-    //      note 1: this is built as
-    //      note 1: [double, int] frexp( double arg );
-    //      note 1: due to the lack of pointers in JavaScript.
-    //      note 1: See code comments for further information.
-    //   example 1: frexp(1)
-    //   returns 1: [0.5, 1]
-    //   example 2: frexp(1.5)
-    //   returns 2: [0.75, 1]
-    //   example 3: frexp(3 * Math.pow(2, 500))
-    //   returns 3: [0.75, 502]
-    //   example 4: frexp(-4)
-    //   returns 4: [-0.5, 3]
-    //   example 5: frexp(Number.MAX_VALUE)
-    //   returns 5: [0.9999999999999999, 1024]
-    //   example 6: frexp(Number.MIN_VALUE)
-    //   returns 6: [0.5, -1073]
-    //   example 7: frexp(-Infinity)
-    //   returns 7: [-Infinity, 0]
-    //   example 8: frexp(-0)
-    //   returns 8: [-0, 0]
-    //   example 9: frexp(NaN)
-    //   returns 9: [NaN, 0]
-    // Potential issue with this implementation:
-    // the precisions of Math.pow and the ** operator are undefined in the ECMAScript standard,
-    // however, sane implementations should give the same results for Math.pow(2, <integer>) operations
-    // Like frexp of C and std::frexp of C++,
-    // but returns an array instead of using a pointer argument for passing the exponent result.
-    // Object.is(n, frexp(n)[0] * 2 ** frexp(n)[1]) for all number values of n except when Math.isFinite(n) && Math.abs(n) > 2**1023
-    // Object.is(n, (2 * frexp(n)[0]) * 2 ** (frexp(n)[1] - 1)) for all number values of n
-    // Object.is(n, frexp(n)[0]) for these values of n: 0, -0, NaN, Infinity, -Infinity
-    // Math.abs(frexp(n)[0]) is >= 0.5 and < 1.0 for any other number-type value of n
-    // See http://en.cppreference.com/w/c/numeric/math/frexp for a more detailed description
-    arg = Number(arg);
-    var result = [arg, 0];
-    if (arg !== 0 && Number.isFinite(arg)) {
-        var absArg = Math.abs(arg);
-        // Math.log2 was introduced in ES2015, use it when available
-        var log2 = Math.log2 || function log2(n) { return Math.log(n) * Math.LOG2E; };
-        var exp = Math.max(-1023, Math.floor(log2(absArg)) + 1);
-        var x = absArg * Math.pow(2, -exp);
-        // These while loops compensate for rounding errors that sometimes occur because of ECMAScript's Math.log2's undefined precision
-        // and also works around the issue of Math.pow(2, -exp) === Infinity when exp <= -1024
-        while (x < 0.5) {
-            x *= 2;
-            exp--;
-        }
-        while (x >= 1) {
-            x *= 0.5;
-            exp++;
-        }
-        if (arg < 0) {
-            x = -x;
-        }
-        result[0] = x;
-        result[1] = exp;
-    }
-    return result;
-}
 /*
- *  IEEE double precision to CBM 5 byte float conversion
- *
- *  written 2008-06-19 by Michael Kircher
- */
-function CBMFloat(S) {
-    var number = Number(S); // atof
-    var cbm_mantissa;
-    var cbm_exponent;
-    var _a = frexp(number), mantissa = _a[0], exponent = _a[1];
-    cbm_mantissa = (4294967296.0 * Math.abs(mantissa)) & 0x7FFFFFFF + 2147483648 * (mantissa < 0 ? 1 : 0);
-    cbm_exponent = 128 + exponent;
-    if (number == 0.0) {
-        cbm_exponent = 0;
-        cbm_mantissa = 0;
-    }
-    var R = "$" + hex((cbm_exponent) & 0xFF) + "," +
-        "$" + hex((cbm_mantissa >> 24) & 0xFF) + "," +
-        "$" + hex((cbm_mantissa >> 16) & 0xFF) + "," +
-        "$" + hex((cbm_mantissa >> 8) & 0xFF) + "," +
-        "$" + hex((cbm_mantissa >> 0) & 0xFF);
-    return R;
+function IsBitmap(Linea: string,  nl: number): string | undefined
+{
+   const R = new RegExp(/^\s*bitmap\s+(.+)\s*$/igm);
+   const match = R.exec(Linea);
+   if(match === null) return undefined;
+
+   const [all, value] = match;
+
+   let Argomento = Trim(value);
+
+   if(Argomento.Length()!=4 && Argomento.Length()!=8)
+   {
+      error(`invalid BITMAP value: "${Argomento}" linea=${Linea}`);
+      return undefined;
+   }
+
+   let byteval = String(bitmapToByte(Argomento));
+
+   let ReplaceTo = `   ${BYTE("", byteval)}`;
+   return ReplaceTo;
 }
-function IsFloat(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var NomeLabel;
-    var StringaFloat;
-    var Def;
-    var ReplaceTo = "";
-    var G = GetToken(Linea, " ");
-    Linea = G.Rest;
-    NomeLabel = Trim(G.Token);
-    if (NomeLabel == "FLOAT") {
-        StringaFloat = NomeLabel;
-        NomeLabel = "";
-        Def = Linea;
-    }
-    else {
-        Linea = Trim(Linea);
-        G = GetToken(Linea, " ");
-        Linea = G.Rest;
-        StringaFloat = Trim(G.Token);
-        if (StringaFloat != "FLOAT")
-            return undefined;
-        Def = Linea;
-    }
-    ReplaceTo = NomeLabel + (" " + BYTE + " ");
-    Def = Trim(Def) + ",";
-    for (;;) {
-        Def = Trim(Def);
-        G = GetToken(Def, ",");
-        Def = G.Rest;
-        var Numero = Trim(G.Token);
-        if (Numero == "")
-            break;
-        ReplaceTo = ReplaceTo + CBMFloat(Numero) + ",";
-    }
-    ReplaceTo = ReplaceTo.SubString(1, ReplaceTo.Length() - 1);
-    return ReplaceTo;
+*/
+/*
+function bitmapToByte(bmp: string)
+{
+   let byteval = 0;
+   if(bmp.Length()==8)
+   {
+     // mono
+     for(let t=1,pos=128;t<=8;t++,pos=pos>>1)
+     {
+        let c = bmp.CharAt(t);
+        if(c!='.' && c!='-' && c!='0')
+        {
+           byteval = byteval | pos;
+        }
+     }
+   }
+   else
+   {
+     // multicolor
+     for(let t=1,pos=6;t<=4;t++,pos-=2)
+     {
+        let c = bmp.CharAt(t);
+        let code = 0b00;
+        
+        if(c=='1' || c=='B') code = 0b01;
+        if(c=='2' || c=='F') code = 0b10;
+        if(c=='3' || c=='A') code = 0b11;
+
+        byteval = byteval | (code<<pos);
+     }
+   }
+   return String(byteval);
 }
+*/
+/*
+function IsSprite(Linea: string,  nl: number): string | undefined
+{
+   const R = new RegExp(/^\s*sprite\s+(.+)\s*$/igm);
+   const match = R.exec(Linea);
+   if(match === null) return undefined;
+
+   const [all, value] = match;
+
+   let Argomento = Trim(value);
+
+   if(Argomento.Length()!=4*3 && Argomento.Length()!=8*3)
+   {
+      error(`invalid BITMAP value: "${Argomento}" linea=${Linea}`);
+      return undefined;
+   }
+
+   if(Argomento.Length() === 8*3)
+   {
+      let b1 = bitmapToByte(Argomento.substr(0+0*8, 8));
+      let b2 = bitmapToByte(Argomento.substr(0+1*8, 8));
+      let b3 = bitmapToByte(Argomento.substr(0+2*8, 8));
+      let ReplaceTo = `   ${BYTE("", b1, b2, b3)}`;
+      return ReplaceTo;
+   }
+
+   if(Argomento.Length() === 4*3)
+   {
+      let b1 = bitmapToByte(Argomento.substr(0+0*4, 4));
+      let b2 = bitmapToByte(Argomento.substr(0+1*4, 4));
+      let b3 = bitmapToByte(Argomento.substr(0+2*4, 4));
+      let ReplaceTo = `   ${BYTE("", b1, b2, b3)}`;
+      return ReplaceTo;
+   }
+}
+*/
+/*
+import { CBMFloat } from "./cbm_float";
+
+function _IsFloat(Linea: string,  nl: number): string | undefined
+{
+   Linea = UpperCase(Trim(Linea))+" ";
+
+   let NomeLabel;
+   let StringaFloat;
+   let Def;
+
+   let ReplaceTo = "";
+
+   let G = GetToken(Linea," "); Linea = G.Rest;
+   NomeLabel = Trim(G.Token);
+   if(NomeLabel=="FLOAT")
+   {
+      StringaFloat = NomeLabel;
+      NomeLabel = "";
+      Def = Linea;
+   }
+   else
+   {
+      Linea = Trim(Linea);
+      G = GetToken(Linea," "); Linea = G.Rest;
+      StringaFloat = Trim(G.Token);
+      if(StringaFloat!="FLOAT") return undefined;
+      Def = Linea;
+   }
+
+   Def = Trim(Def) + ",";
+
+   let list: string[] = [];
+
+   for(;;)
+   {
+      Def = Trim(Def);
+      G = GetToken(Def,","); Def = G.Rest;
+      let Numero = Trim(G.Token);
+      if(Numero=="") break;
+      list.push(Numero);
+   }
+
+   list = list.map(e => {
+      const bytes = CBMFloat(Number(e));
+      return bytes.join(",");
+   });
+
+   ReplaceTo = BYTE(NomeLabel, ...list) ;
+   return ReplaceTo;
+}
+*/
+/*
+function IsFloat(Linea: string, nl: number): string | undefined
+{
+   let result = parseResult(Linea);
+   if(result === undefined) return undefined;
+   
+   if(result.type !== "line") return undefined;
+   const node = result.line;
+
+   if(node.type === "float")
+   {
+      let ReplaceTo = nodeToString(node);
+      return ReplaceTo;
+   }
+
+   return undefined;
+}
+*/
 function IsMACRO(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
     var PM;
     var PList = [];
-    var G = GetToken(Linea, " ");
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var StringaMacro = G.Token;
     if (StringaMacro != "MACRO")
         return undefined;
-    G = GetToken(Linea, " ");
+    G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var NomeMacro = G.Token;
     // permette il carattere "." nel nome macro
     NomeMacro = NomeMacro.replace(/\./g, "_");
-    NomeMacro = Trim(NomeMacro);
+    NomeMacro = utils_1.Trim(NomeMacro);
     if (NomeMacro == "") {
         error("no macro name", nl);
     }
@@ -1806,9 +1691,9 @@ function IsMACRO(Linea, nl) {
     var NM = NomeMacro;
     // processa i parametri della macro
     for (;;) {
-        G = GetToken(PM, ",");
+        G = utils_1.GetToken(PM, ",");
         PM = G.Rest;
-        var Dummy = Trim(G.Token);
+        var Dummy = utils_1.Trim(G.Token);
         if (Dummy == "")
             break;
         if (Dummy == "CONST") {
@@ -1881,11 +1766,11 @@ function IsENDMACRO(Linea, nl) {
     return "   endm";
 }
 function IsMacroCall(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var G = GetToken(Linea, " ");
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var NomeMacro = G.Token;
-    var Parametri = Trim(Linea);
+    var Parametri = utils_1.Trim(Linea);
     // empty macro
     if (NomeMacro == "")
         return undefined;
@@ -1897,8 +1782,8 @@ function IsMacroCall(Linea, nl) {
     var list = [];
     var actualparms = [];
     for (;;) {
-        G = GetToken(prm, ",");
-        var p = Trim(G.Token);
+        G = utils_1.GetToken(prm, ",");
+        var p = utils_1.Trim(G.Token);
         prm = G.Rest;
         if (p == "")
             break;
@@ -2040,11 +1925,11 @@ function IsMacroCall(Linea: string, nl: number): string | undefined
 }
 */
 function IsSUB(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaSUB = GetParm(Linea, " ", 0);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaSUB = utils_1.GetParm(Linea, " ", 0);
     if (StringaSUB != "SUB")
         return undefined;
-    var NomeSub = Trim(GetParm(Linea, " ", 1));
+    var NomeSub = utils_1.Trim(utils_1.GetParm(Linea, " ", 1));
     // impone terminazione con ()
     if (!NomeSub.endsWith("()"))
         return undefined;
@@ -2054,9 +1939,9 @@ function IsSUB(Linea, nl) {
     return ReplaceTo;
 }
 function IsEXITSUB(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
     var StringaREPEAT;
-    var G = GetToken(Linea, " THEN EXIT SUB");
+    var G = utils_1.GetToken(Linea, " THEN EXIT SUB");
     Linea = G.Rest;
     StringaREPEAT = G.Token;
     if (StringaREPEAT != "") {
@@ -2066,14 +1951,14 @@ function IsEXITSUB(Linea, nl) {
         var ReplaceTo_1 = StringaREPEAT + " THEN GOTO " + Label("SUB", nl, "END");
         return ReplaceTo_1;
     }
-    G = GetToken(Linea, " ");
+    G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     StringaREPEAT = G.Token;
     var ReplaceTo = "   rts";
     if (StringaREPEAT == "EXITSUB")
         return ReplaceTo;
     if (StringaREPEAT == "EXIT") {
-        G = GetToken(Linea, " ");
+        G = utils_1.GetToken(Linea, " ");
         StringaREPEAT = G.Token;
         if (StringaREPEAT == "SUB")
             return ReplaceTo;
@@ -2081,9 +1966,9 @@ function IsEXITSUB(Linea, nl) {
     return undefined;
 }
 function IsENDSUB(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StringaEndMacro = GetParm(Linea, " ", 0);
-    var StringaEndMacro1 = GetParm(Linea, " ", 1);
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    var StringaEndMacro = utils_1.GetParm(Linea, " ", 0);
+    var StringaEndMacro1 = utils_1.GetParm(Linea, " ", 1);
     if (StringaEndMacro == "ENDSUB" || (StringaEndMacro == "END" && StringaEndMacro1 == "SUB")) {
         if (StackSub.Count - 1 < 0) {
             error("SUB without END SUB");
@@ -2095,813 +1980,76 @@ function IsENDSUB(Linea, nl) {
     }
     return undefined;
 }
+/*
+// old code without parser
 // const id = value
-function IsConst(Linea, nl) {
-    var R = new RegExp(/\s*const\s+([_a-zA-Z0-9]+[_a-zA-Z0-9]*)\s+=\s+(.*)/gmi);
-    var match = R.exec(Linea);
-    if (match === null)
-        return undefined;
-    var all = match[0], id = match[1], value = match[2];
-    return id + " = " + value;
+function _IsConst(Linea: string, nl: number): string | undefined
+{
+   const R = new RegExp(/\s*const\s+([_a-zA-Z0-9]+[_a-zA-Z0-9]*)\s+=\s+(.*)/gmi);
+   const match = R.exec(Linea);
+
+   if(match === null) return undefined;
+
+   const [ all, id, value ] = match;
+
+   return `${id} = ${value}`;
 }
-//---------------------------------------------------------------------------
-function IsBasicStart(Linea) {
-    return Linea.toUpperCase().AnsiPos("BASIC START") > 0;
-}
-function IsBasicEnd(Linea) {
-    return Linea.toUpperCase().AnsiPos("BASIC END") > 0;
-}
-function IsBasic(Linea, nl) {
-    Linea = UpperCase(Trim(Linea)) + " ";
-    var StuffLine;
-    var si = -1;
-    // compact lines with no no line numbers into the previous numbered line
-    if (IsBasicStart(Linea)) {
-        for (var t = nl + 1; t < L.Count; t++) {
-            var Linx = UpperCase(Trim(L.Strings[t]));
-            if (IsBasicEnd(Linx))
-                break;
-            if (StartWithNumber(Linx)) {
-                si = t;
-            }
-            else {
-                if (si == -1) {
-                    error("BASIC line continuing from no line number in line " + t);
-                    break;
-                }
-                L.Strings[si] = L.Strings[si].trim() + ":" + Linx; // \r is here
-                L.Strings[t] = "";
-            }
-        }
-    }
-    if (Linea.AnsiPos("BASIC START") > 0) {
-        if (Linea.AnsiPos("COMPACT") > 0)
-            BasicCompact = true;
-        L.Strings[nl] = "";
-        for (var t = nl + 1; t < L.Count; t++) {
-            Linea = UpperCase(Trim(L.Strings[t]));
-            if (Linea.AnsiPos("BASIC END") > 0) {
-                L.Strings[t] = "basic_row_" + basic_row + ":  " + BYTE + " 0,0";
-                return true;
-            }
-            L.Strings[t] = TranslateBasic(Trim(L.Strings[t]) + " ");
-        }
-        error("BASIC START without BASIC END");
-    }
-    return false;
-}
-function StartWithNumber(Linea) {
-    var LineNumber = Trim(GetParm(Linea, " ", 0));
-    if (LineNumber == "")
-        return false;
-    var numlin;
+*/
+var nearley_1 = __importDefault(require("nearley"));
+var node_all_1 = require("./node_all");
+var const_grammar = require("./const");
+function parseResult(Linea) {
+    var ans;
     try {
-        numlin = LineNumber.ToInt();
-        if (numlin < 0 || isNaN(numlin))
-            return false;
+        var const_parser = new nearley_1.default.Parser(const_grammar.ParserRules, const_grammar.ParserStart);
+        ans = const_parser.feed(Linea);
     }
     catch (ex) {
-        return false;
+        // parse error
+        //console.log(ex);
+        return undefined;
     }
-    return true;
+    // check no result
+    if (ans.results.length === 0)
+        return undefined;
+    return ans.results[0];
 }
-function MatchToken(Linea, inquote, inrem) {
-    var keywords = Object.keys(TokensKeywords);
-    for (var t = 0; t < keywords.length; t++) {
-        var keyword = keywords[t];
-        var index = TokensKeywords[keyword];
-        var l = keyword.Length();
-        if (l > 0 && Linea.SubString(1, l) === keyword) {
-            // console.log(`matched token: ${Tokens[t]}`);
-            Linea = Linea.SubString(l + 1);
-            var Matched = index + ",";
-            // REM or DATA
-            if (index == 143 || index == 131)
-                inrem = true;
-            return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
-        }
+/*
+function IsConst(Linea: string, nl: number): string | undefined
+{
+   let result = parseResult(Linea);
+   if(result === undefined) return undefined;
+   
+   if(result.type !== "line") return undefined;
+   const node = result.line;
+
+   if(node.type === "const")
+   {
+      let ReplaceTo = nodeToString(node);
+      return ReplaceTo;
+   }
+
+   return undefined;
+}
+*/
+// const
+// float
+// bitmap
+// sprite
+function IsCombined(Linea, nl) {
+    var result = parseResult(Linea);
+    if (result === undefined)
+        return undefined;
+    if (result.type !== "line")
+        return undefined;
+    var node = result.line;
+    if (node.type === "const" || node.type === "float" || node.type === "bitmap" || node.type === "sprite") {
+        var ReplaceTo = node_all_1.nodeToString(node);
+        return ReplaceTo;
     }
     return undefined;
 }
-function MatchTextToken(Linea, inquote, inrem) {
-    // match text
-    var keys = Object.keys(TokensText);
-    for (var t = 0; t < keys.length; t++) {
-        var text = keys[t];
-        var index = TokensText[text];
-        var l = text.Length();
-        if (l > 0 && Linea.SubString(1, l) === text) {
-            // console.log(`matched text: ${Tokens[t]}`);
-            Linea = Linea.SubString(l + 1);
-            var Matched = "";
-            if (!(BasicCompact == true && index == 32)) {
-                Matched = index + ",";
-            }
-            if (index == 34)
-                inquote = true;
-            return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
-        }
-    }
-    return undefined;
-}
-function MatchSymbol(Linea, inquote, inrem) {
-    function cifra(Symbol, c) {
-        // (((n % 1000) - (n % 100)/100 + $30)
-        var n = Math.pow(10, c + 1);
-        var mille = String(n);
-        var cento = String(n / 10);
-        var n_mod_mille = parens(mod(Symbol, mille));
-        var n_mod_cento = parens(mod(Symbol, cento));
-        var n_mod_mille_meno_n_mod_cento = parens(n_mod_mille + "-" + n_mod_cento);
-        var div_cento = n_mod_mille_meno_n_mod_cento + "/" + cento;
-        var all = parens(div_cento + "+$30");
-        return all;
-    }
-    // match reference to symbol {symbol}, rendered as a 4 character basic number
-    if (Linea.SubString(1, 1) == "{") {
-        var x = Linea.AnsiPos("}");
-        if (x > 0) {
-            var Symbol_1 = Linea.SubString(2, x - 2);
-            Linea = Linea.SubString(x + 1);
-            var prima_cifra = cifra(Symbol_1, 0);
-            var seconda_cifra = cifra(Symbol_1, 1);
-            var terza_cifra = cifra(Symbol_1, 2);
-            var quarta_cifra = cifra(Symbol_1, 3);
-            var quinta_cifra = cifra(Symbol_1, 4);
-            var Matched = quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
-            return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
-        }
-    }
-    return undefined;
-}
-function MatchQuote(Linea, inquote, inrem) {
-    if (inquote) {
-        var codes = Object.keys(Ascii);
-        for (var j = 0; j < codes.length; j++) {
-            var code = codes[j];
-            var t = Ascii[code];
-            var l = code.Length();
-            if (l > 0 && Linea.SubString(1, l) == UpperCase(code)) {
-                // console.log(`matched string text: ${Ascii[t]}`);
-                Linea = Linea.SubString(l + 1);
-                var Matched = t + ",";
-                if (t == 34)
-                    inquote = false;
-                return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
-            }
-        }
-    }
-    return undefined;
-}
-function MatchRem(Linea, inquote, inrem) {
-    // within rem, matches to the end of line
-    if (inrem) {
-        // console.log("we are in rem");
-        var codes = Object.keys(Ascii);
-        for (var j = 0; j <= codes.length; j++) {
-            var code = codes[j];
-            var t = Ascii[code];
-            var l = code.Length();
-            if (l > 0 && Linea.SubString(1, l) == UpperCase(code)) {
-                // console.log(`matched REM text: ${Ascii[t]}`);
-                Linea = Linea.SubString(l + 1);
-                var Matched = t + ",";
-                return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
-            }
-        }
-    }
-    return undefined;
-}
-function TranslateBasic(Linea) {
-    function advance(match) {
-        if (match !== undefined) {
-            Compr += match.Matched;
-            Linea = match.Linea;
-            inquote = match.inquote;
-            inrem = match.inrem;
-            return true;
-        }
-        return false;
-    }
-    // skip empty lines
-    if (Trim(Linea) == "")
-        return "";
-    Linea = UpperCase(Linea); // TODO remove uppercase
-    var G = GetToken(Linea, " ");
-    Linea = G.Rest;
-    var LineNumber = Trim(G.Token);
-    if (LineNumber == "")
-        error("syntax error");
-    var numlin = LineNumber.ToInt();
-    var Compr = "";
-    var inquote = false;
-    var inrem = false;
-    Linea = Trim(Linea);
-    for (;;) {
-        if (Linea == "")
-            break;
-        if (!inquote && !inrem) {
-            var match = MatchToken(Linea, inquote, inrem);
-            if (!advance(match)) {
-                var match_1 = MatchTextToken(Linea, inquote, inrem);
-                if (!advance(match_1)) {
-                    var match_2 = MatchSymbol(Linea, inquote, inrem);
-                    if (!advance(match_2)) {
-                        console.log("unrecognized keyword token: " + Linea);
-                        error("unrecognized keyword token: " + Linea);
-                    }
-                }
-            }
-        }
-        else if (inquote) {
-            // within quote, matches everything to next quote (")
-            var match = MatchQuote(Linea, inquote, inrem);
-            if (!advance(match)) {
-                console.log("unrecognized quoted text token: " + Linea);
-                error("unrecognized quoted text token");
-            }
-        }
-        else if (inrem) {
-            // inrem (or data)
-            var match = MatchRem(Linea, inquote, inrem);
-            if (!advance(match)) {
-                console.log("unrecognized rem/data text token: " + Linea);
-                error("unrecognized rem/data text token");
-            }
-        }
-    }
-    Compr = Compr + "0";
-    var Label = "basic_row_" + basic_row + ":";
-    var NextLabel = "basic_row_" + (basic_row + 1);
-    var ReplaceTo = Label + ("  " + BYTE + " " + parens(lobyte(NextLabel)) + "," + parens(hibyte(NextLabel)) + "," + parens(lobyte(numlin.toString())) + "," + parens(hibyte(numlin.toString())) + "," + Compr);
-    basic_row++;
-    return ReplaceTo;
-}
-function InitTokens() {
-    TokensText[" "] = 32;
-    TokensText["!"] = 33;
-    TokensText["\x22"] = 34;
-    TokensText["#"] = 35;
-    TokensText["$"] = 36;
-    TokensText["%"] = 37;
-    TokensText["&"] = 38;
-    TokensText["'"] = 39;
-    TokensText["("] = 40;
-    TokensText[")"] = 41;
-    TokensText["*"] = 42;
-    TokensText["+"] = 43;
-    TokensText[","] = 44;
-    TokensText["-"] = 45;
-    TokensText["."] = 46;
-    TokensText["/"] = 47;
-    TokensText["0"] = 48;
-    TokensText["1"] = 49;
-    TokensText["2"] = 50;
-    TokensText["3"] = 51;
-    TokensText["4"] = 52;
-    TokensText["5"] = 53;
-    TokensText["6"] = 54;
-    TokensText["7"] = 55;
-    TokensText["8"] = 56;
-    TokensText["9"] = 57;
-    TokensText[":"] = 58;
-    TokensText[";"] = 59;
-    TokensText["<"] = 60;
-    TokensText["="] = 61;
-    TokensText[">"] = 62;
-    TokensText["?"] = 63;
-    TokensText["@"] = 64;
-    TokensText["A"] = 65;
-    TokensText["B"] = 66;
-    TokensText["C"] = 67;
-    TokensText["D"] = 68;
-    TokensText["E"] = 69;
-    TokensText["F"] = 70;
-    TokensText["G"] = 71;
-    TokensText["H"] = 72;
-    TokensText["I"] = 73;
-    TokensText["J"] = 74;
-    TokensText["K"] = 75;
-    TokensText["L"] = 76;
-    TokensText["M"] = 77;
-    TokensText["N"] = 78;
-    TokensText["O"] = 79;
-    TokensText["P"] = 80;
-    TokensText["Q"] = 81;
-    TokensText["R"] = 82;
-    TokensText["S"] = 83;
-    TokensText["T"] = 84;
-    TokensText["U"] = 85;
-    TokensText["V"] = 86;
-    TokensText["W"] = 87;
-    TokensText["X"] = 88;
-    TokensText["Y"] = 89;
-    TokensText["Z"] = 90;
-    TokensText["["] = 91;
-    TokensText["£"] = 92;
-    TokensText["]"] = 93;
-    TokensText["^"] = 94;
-    TokensText["{left arrow}"] = 95;
-    TokensKeywords["END"] = 128;
-    TokensKeywords["FOR"] = 129;
-    TokensKeywords["NEXT"] = 130;
-    TokensKeywords["DATA"] = 131;
-    TokensKeywords["INPUT#"] = 132;
-    TokensKeywords["INPUT"] = 133;
-    TokensKeywords["DIM"] = 134;
-    TokensKeywords["READ"] = 135;
-    TokensKeywords["LET"] = 136;
-    TokensKeywords["GOTO"] = 137;
-    TokensKeywords["RUN"] = 138;
-    TokensKeywords["IF"] = 139;
-    TokensKeywords["RESTORE"] = 140;
-    TokensKeywords["GOSUB"] = 141;
-    TokensKeywords["RETURN"] = 142;
-    TokensKeywords["REM"] = 143;
-    TokensKeywords["STOP"] = 144;
-    TokensKeywords["ON"] = 145;
-    TokensKeywords["WAIT"] = 146;
-    TokensKeywords["LOAD"] = 147;
-    TokensKeywords["SAVE"] = 148;
-    TokensKeywords["VERIFY"] = 149;
-    TokensKeywords["DEF"] = 150;
-    TokensKeywords["POKE"] = 151;
-    TokensKeywords["PRINT#"] = 152;
-    TokensKeywords["PRINT"] = 153;
-    TokensKeywords["CONT"] = 154;
-    TokensKeywords["LIST"] = 155;
-    TokensKeywords["CLR"] = 156;
-    TokensKeywords["CMD"] = 157;
-    TokensKeywords["SYS"] = 158;
-    TokensKeywords["OPEN"] = 159;
-    TokensKeywords["CLOSE"] = 160;
-    TokensKeywords["GET"] = 161;
-    TokensKeywords["NEW"] = 162;
-    TokensKeywords["TAB("] = 163;
-    TokensKeywords["TO"] = 164;
-    TokensKeywords["FN"] = 165;
-    TokensKeywords["SPC("] = 166;
-    TokensKeywords["THEN"] = 167;
-    TokensKeywords["NOT"] = 168;
-    TokensKeywords["STEP"] = 169;
-    TokensKeywords["+"] = 170;
-    TokensKeywords["-"] = 171;
-    TokensKeywords["*"] = 172;
-    TokensKeywords["/"] = 173;
-    TokensKeywords["^"] = 174;
-    TokensKeywords["AND"] = 175;
-    TokensKeywords["OR"] = 176;
-    TokensKeywords[">"] = 177;
-    TokensKeywords["="] = 178;
-    TokensKeywords["<"] = 179;
-    TokensKeywords["SGN"] = 180;
-    TokensKeywords["INT"] = 181;
-    TokensKeywords["ABS"] = 182;
-    TokensKeywords["USR"] = 183;
-    TokensKeywords["FRE"] = 184;
-    TokensKeywords["POS"] = 185;
-    TokensKeywords["SQR"] = 186;
-    TokensKeywords["RND"] = 187;
-    TokensKeywords["LOG"] = 188;
-    TokensKeywords["EXP"] = 189;
-    TokensKeywords["COS"] = 190;
-    TokensKeywords["SIN"] = 191;
-    TokensKeywords["TAN"] = 192;
-    TokensKeywords["ATN"] = 193;
-    TokensKeywords["PEEK"] = 194;
-    TokensKeywords["LEN"] = 195;
-    TokensKeywords["STR$"] = 196;
-    TokensKeywords["VAL"] = 197;
-    TokensKeywords["ASC"] = 198;
-    TokensKeywords["CHR$"] = 199;
-    TokensKeywords["LEFT$"] = 200;
-    TokensKeywords["RIGHT$"] = 201;
-    TokensKeywords["MID$"] = 202;
-    TokensKeywords["{pi}"] = 255;
-    /*
-       Tokens[32] = " ";
-       Tokens[33] = "!";
-       Tokens[34] = "\x22";
-       Tokens[35] = "#";
-       Tokens[36] = "$";
-       Tokens[37] = "%";
-       Tokens[38] = "&";
-       Tokens[39] = "'";
-       Tokens[40] = "(";
-       Tokens[41] = ")";
-       Tokens[42] = "*";
-       Tokens[43] = "+";
-       Tokens[44] = ",";
-       Tokens[45] = "-";
-       Tokens[46] = ".";
-       Tokens[47] = "/";
-       Tokens[48] = "0";
-       Tokens[49] = "1";
-       Tokens[50] = "2";
-       Tokens[51] = "3";
-       Tokens[52] = "4";
-       Tokens[53] = "5";
-       Tokens[54] = "6";
-       Tokens[55] = "7";
-       Tokens[56] = "8";
-       Tokens[57] = "9";
-       Tokens[58] = ":";
-       Tokens[59] = ";";
-       Tokens[60] = "<";
-       Tokens[61] = "=";
-       Tokens[62] = ">";
-       Tokens[63] = "?";
-       Tokens[64] = "@";
-       Tokens[65] = "A";
-       Tokens[66] = "B";
-       Tokens[67] = "C";
-       Tokens[68] = "D";
-       Tokens[69] = "E";
-       Tokens[70] = "F";
-       Tokens[71] = "G";
-       Tokens[72] = "H";
-       Tokens[73] = "I";
-       Tokens[74] = "J";
-       Tokens[75] = "K";
-       Tokens[76] = "L";
-       Tokens[77] = "M";
-       Tokens[78] = "N";
-       Tokens[79] = "O";
-       Tokens[80] = "P";
-       Tokens[81] = "Q";
-       Tokens[82] = "R";
-       Tokens[83] = "S";
-       Tokens[84] = "T";
-       Tokens[85] = "U";
-       Tokens[86] = "V";
-       Tokens[87] = "W";
-       Tokens[88] = "X";
-       Tokens[89] = "Y";
-       Tokens[90] = "Z";
-       Tokens[91] = "[";
-       Tokens[92] = "£";
-       Tokens[93] = "]";
-       Tokens[94] = "^";
-       Tokens[95] = "{left arrow}";
-       Tokens[128]= "END";
-       Tokens[129]= "FOR";
-       Tokens[130]= "NEXT";
-       Tokens[131]= "DATA";
-       Tokens[132]= "INPUT#";
-       Tokens[133]= "INPUT";
-       Tokens[134]= "DIM";
-       Tokens[135]= "READ";
-       Tokens[136]= "LET";
-       Tokens[137]= "GOTO";
-       Tokens[138]= "RUN";
-       Tokens[139]= "IF";
-       Tokens[140]= "RESTORE";
-       Tokens[141]= "GOSUB";
-       Tokens[142]= "RETURN";
-       Tokens[143]= "REM";
-       Tokens[144]= "STOP";
-       Tokens[145]= "ON";
-       Tokens[146]= "WAIT";
-       Tokens[147]= "LOAD";
-       Tokens[148]= "SAVE";
-       Tokens[149]= "VERIFY";
-       Tokens[150]= "DEF";
-       Tokens[151]= "POKE";
-       Tokens[152]= "PRINT#";
-       Tokens[153]= "PRINT";
-       Tokens[154]= "CONT";
-       Tokens[155]= "LIST";
-       Tokens[156]= "CLR";
-       Tokens[157]= "CMD";
-       Tokens[158]= "SYS";
-       Tokens[159]= "OPEN";
-       Tokens[160]= "CLOSE";
-       Tokens[161]= "GET";
-       Tokens[162]= "NEW";
-       Tokens[163]= "TAB(";
-       Tokens[164]= "TO";
-       Tokens[165]= "FN";
-       Tokens[166]= "SPC(";
-       Tokens[167]= "THEN";
-       Tokens[168]= "NOT";
-       Tokens[169]= "STEP";
-       Tokens[170]= "+";
-       Tokens[171]= "-";
-       Tokens[172]= "*";
-       Tokens[173]= "/";
-       Tokens[174]= "^";
-       Tokens[175]= "AND";
-       Tokens[176]= "OR";
-       Tokens[177]= ">";
-       Tokens[178]= "=";
-       Tokens[179]= "<";
-       Tokens[180]= "SGN";
-       Tokens[181]= "INT";
-       Tokens[182]= "ABS";
-       Tokens[183]= "USR";
-       Tokens[184]= "FRE";
-       Tokens[185]= "POS";
-       Tokens[186]= "SQR";
-       Tokens[187]= "RND";
-       Tokens[188]= "LOG";
-       Tokens[189]= "EXP";
-       Tokens[190]= "COS";
-       Tokens[191]= "SIN";
-       Tokens[192]= "TAN";
-       Tokens[193]= "ATN";
-       Tokens[194]= "PEEK";
-       Tokens[195]= "LEN";
-       Tokens[196]= "STR$";
-       Tokens[197]= "VAL";
-       Tokens[198]= "ASC";
-       Tokens[199]= "CHR$";
-       Tokens[200]= "LEFT$";
-       Tokens[201]= "RIGHT$";
-       Tokens[202]= "MID$";
-       for(let t=203;t<=254;t++) Tokens[t] = "";
-       Tokens[255]= "{pi}";
-    */
-    Ascii["{rev a}"] = 1;
-    Ascii["{rev b}"] = 2;
-    Ascii["{run stop}"] = 3;
-    Ascii["{rev d}"] = 4;
-    Ascii["{wht}"] = 5;
-    Ascii["{white}"] = 5;
-    Ascii["{rev f}"] = 6;
-    Ascii["{rev g}"] = 7;
-    Ascii["{rev h}"] = 8;
-    Ascii["{rev i}"] = 9;
-    Ascii["{rev j}"] = 10;
-    Ascii["{rev k}"] = 11;
-    Ascii["{rev l}"] = 12;
-    Ascii["{return}"] = 13;
-    Ascii["{rev n}"] = 14;
-    Ascii["{rev o}"] = 15;
-    Ascii["{rev p}"] = 16;
-    Ascii["{down}"] = 17;
-    Ascii["{rvs on}"] = 18;
-    Ascii["{home}"] = 19;
-    Ascii["{del}"] = 20;
-    Ascii["{rev u}"] = 21;
-    Ascii["{rev v}"] = 22;
-    Ascii["{rev w}"] = 23;
-    Ascii["{rev x}"] = 24;
-    Ascii["{rev y}"] = 25;
-    Ascii["{rev z}"] = 26;
-    Ascii["{rev [}"] = 27;
-    Ascii["{red}"] = 28;
-    Ascii["{right}"] = 29;
-    Ascii["{grn}"] = 30;
-    Ascii["{green}"] = 30;
-    Ascii["{blu}"] = 31;
-    Ascii["{blue}"] = 31;
-    Ascii[" "] = 32;
-    Ascii["!"] = 33;
-    Ascii["\x22"] = 34;
-    Ascii["#"] = 35;
-    Ascii["$"] = 36;
-    Ascii["%"] = 37;
-    Ascii["&"] = 38;
-    Ascii["'"] = 39;
-    Ascii["("] = 40;
-    Ascii[")"] = 41;
-    Ascii["*"] = 42;
-    Ascii["+"] = 43;
-    Ascii[","] = 44;
-    Ascii["-"] = 45;
-    Ascii["."] = 46;
-    Ascii["/"] = 47;
-    Ascii["0"] = 48;
-    Ascii["1"] = 49;
-    Ascii["2"] = 50;
-    Ascii["3"] = 51;
-    Ascii["4"] = 52;
-    Ascii["5"] = 53;
-    Ascii["6"] = 54;
-    Ascii["7"] = 55;
-    Ascii["8"] = 56;
-    Ascii["9"] = 57;
-    Ascii[":"] = 58;
-    Ascii[";"] = 59;
-    Ascii["<"] = 60;
-    Ascii["="] = 61;
-    Ascii[">"] = 62;
-    Ascii["?"] = 63;
-    Ascii["@"] = 64;
-    Ascii["A"] = 65;
-    Ascii["B"] = 66;
-    Ascii["C"] = 67;
-    Ascii["D"] = 68;
-    Ascii["E"] = 69;
-    Ascii["F"] = 70;
-    Ascii["G"] = 71;
-    Ascii["H"] = 72;
-    Ascii["I"] = 73;
-    Ascii["J"] = 74;
-    Ascii["K"] = 75;
-    Ascii["L"] = 76;
-    Ascii["M"] = 77;
-    Ascii["N"] = 78;
-    Ascii["O"] = 79;
-    Ascii["P"] = 80;
-    Ascii["Q"] = 81;
-    Ascii["R"] = 82;
-    Ascii["S"] = 83;
-    Ascii["T"] = 84;
-    Ascii["U"] = 85;
-    Ascii["V"] = 86;
-    Ascii["W"] = 87;
-    Ascii["X"] = 88;
-    Ascii["Y"] = 89;
-    Ascii["Z"] = 90;
-    Ascii["["] = 91;
-    Ascii["£"] = 92;
-    Ascii["]"] = 93;
-    Ascii["^"] = 94;
-    Ascii["{left arrow}"] = 95;
-    Ascii["{shift *}"] = 96;
-    Ascii["{shift a}"] = 97;
-    Ascii["{shift b}"] = 98;
-    Ascii["{shift c}"] = 99;
-    Ascii["{shift d}"] = 100;
-    Ascii["{shift e}"] = 101;
-    Ascii["{shift f}"] = 102;
-    Ascii["{shift g}"] = 103;
-    Ascii["{shift h}"] = 104;
-    Ascii["{shift i}"] = 105;
-    Ascii["{shift j}"] = 106;
-    Ascii["{shift k}"] = 107;
-    Ascii["{shift l}"] = 108;
-    Ascii["{shift m}"] = 109;
-    Ascii["{shift n}"] = 110;
-    Ascii["{shift o}"] = 111;
-    Ascii["{shift p}"] = 112;
-    Ascii["{shift q}"] = 113;
-    Ascii["{shift r}"] = 114;
-    Ascii["{shift s}"] = 115;
-    Ascii["{shift t}"] = 116;
-    Ascii["{shift u}"] = 117;
-    Ascii["{shift v}"] = 118;
-    Ascii["{shift w}"] = 119;
-    Ascii["{119}"] = 119;
-    Ascii["{shift x}"] = 120;
-    Ascii["{shift y}"] = 121;
-    Ascii["{shift z}"] = 122;
-    Ascii["{shift +}"] = 123;
-    Ascii["{cbm -}"] = 124;
-    Ascii["{shift -}"] = 125;
-    Ascii["{pi}"] = 126;
-    Ascii["{cbm *}"] = 127;
-    Ascii["{rev shift *}"] = 128;
-    Ascii["{rev shift a}"] = 129;
-    Ascii["{cbm 1}"] = 129;
-    Ascii["{orange}"] = 129;
-    Ascii["{rev shift b}"] = 130;
-    Ascii["{rev shift c}"] = 131;
-    Ascii["{rev shift d}"] = 132;
-    Ascii["{f1}"] = 133;
-    Ascii["{f3}"] = 134;
-    Ascii["{f5}"] = 135;
-    Ascii["{f7}"] = 136;
-    Ascii["{f2}"] = 137;
-    Ascii["{f4}"] = 138;
-    Ascii["{f6}"] = 139;
-    Ascii["{f8}"] = 140;
-    Ascii["{rev shift m}"] = 141;
-    Ascii["{rev shift n}"] = 142;
-    Ascii["{rev shift o}"] = 143;
-    Ascii["{blk}"] = 144;
-    Ascii["{black}"] = 144;
-    Ascii["{up}"] = 145;
-    Ascii["{rvs off}"] = 146;
-    Ascii["{clr}"] = 147;
-    Ascii["{clear}"] = 147;
-    Ascii["{inst}"] = 148;
-    Ascii["{rev shift u}"] = 149;
-    Ascii["{cbm 2}"] = 149;
-    Ascii["{brown}"] = 149;
-    Ascii["{rev shift v}"] = 150;
-    Ascii["{cbm 3}"] = 150;
-    Ascii["{light red}"] = 150;
-    Ascii["{rev shift w}"] = 151;
-    Ascii["{cbm 4}"] = 151;
-    Ascii["{dark gray}"] = 151;
-    Ascii["{rev shift x}"] = 152;
-    Ascii["{cbm 5}"] = 152;
-    Ascii["{gray}"] = 152;
-    Ascii["{rev shift y}"] = 153;
-    Ascii["{cbm 6}"] = 153;
-    Ascii["{light green}"] = 153;
-    Ascii["{rev shift z}"] = 154;
-    Ascii["{cbm 7}"] = 154;
-    Ascii["{light blue}"] = 154;
-    Ascii["{rev shift +}"] = 155;
-    Ascii["{cbm 8}"] = 155;
-    Ascii["{light gray}"] = 155;
-    Ascii["{pur}"] = 156;
-    Ascii["{purple}"] = 156;
-    Ascii["{left}"] = 157;
-    Ascii["{yel}"] = 158;
-    Ascii["{yellow}"] = 158;
-    Ascii["{cyn}"] = 159;
-    Ascii["{cyan}"] = 159;
-    Ascii["{160}"] = 160;
-    Ascii["{cbm k}"] = 161;
-    Ascii["{cbm i}"] = 162;
-    Ascii["{cbm t}"] = 163;
-    Ascii["{cbm @}"] = 164;
-    Ascii["{cbm g}"] = 165;
-    Ascii["{cbm +}"] = 166;
-    Ascii["{cbm m}"] = 167;
-    Ascii["{cbm £}"] = 168;
-    Ascii["{shift £}"] = 169;
-    Ascii["{cbm n}"] = 170;
-    Ascii["{cbm q}"] = 171;
-    Ascii["{cbm d}"] = 172;
-    Ascii["{cbm z}"] = 173;
-    Ascii["{cbm s}"] = 174;
-    Ascii["{cbm p}"] = 175;
-    Ascii["{cbm a}"] = 176;
-    Ascii["{cbm e}"] = 177;
-    Ascii["{cbm r}"] = 178;
-    Ascii["{cbm w}"] = 179;
-    Ascii["{cbm h}"] = 180;
-    Ascii["{cbm j}"] = 181;
-    Ascii["{cbm l}"] = 182;
-    Ascii["{cbm y}"] = 183;
-    Ascii["{cbm u}"] = 184;
-    Ascii["{cbm o}"] = 185;
-    Ascii["{shift @}"] = 186;
-    Ascii["{cbm f}"] = 187;
-    Ascii["{cbm c}"] = 188;
-    Ascii["{cbm x}"] = 189;
-    Ascii["{cbm v}"] = 190;
-    Ascii["{cbm b}"] = 191;
-    Ascii["{shift *}"] = 192;
-    Ascii["{shift a}"] = 193;
-    Ascii["{shift b}"] = 194;
-    Ascii["{shift c}"] = 195;
-    Ascii["{shift d}"] = 196;
-    Ascii["{shift e}"] = 197;
-    Ascii["{shift f}"] = 198;
-    Ascii["{shift g}"] = 199;
-    Ascii["{shift h}"] = 200;
-    Ascii["{shift i}"] = 201;
-    Ascii["{shift j}"] = 202;
-    Ascii["{shift k}"] = 203;
-    Ascii["{shift l}"] = 204;
-    Ascii["{shift m}"] = 205;
-    Ascii["{shift n}"] = 206;
-    Ascii["{shift o}"] = 207;
-    Ascii["{shift p}"] = 208;
-    Ascii["{shift q}"] = 209;
-    Ascii["{shift r}"] = 210;
-    Ascii["{shift s}"] = 211;
-    Ascii["{shift t}"] = 212;
-    Ascii["{shift u}"] = 213;
-    Ascii["{shift v}"] = 214;
-    Ascii["{shift w}"] = 215;
-    Ascii["{shift x}"] = 216;
-    Ascii["{shift y}"] = 217;
-    Ascii["{shift z}"] = 218;
-    Ascii["{shift +}"] = 219;
-    Ascii["{cbm -}"] = 220;
-    Ascii["{shift -}"] = 221;
-    Ascii["{pi}"] = 222;
-    Ascii["{cbm *}"] = 223;
-    Ascii["{224}"] = 224;
-    Ascii["{cbm k}"] = 225;
-    Ascii["{cbm i}"] = 226;
-    Ascii["{cbm t}"] = 227;
-    Ascii["{cbm @}"] = 228;
-    Ascii["{cbm g}"] = 229;
-    Ascii["{cbm +}"] = 230;
-    Ascii["{cbm m}"] = 231;
-    Ascii["{cbm £}"] = 232;
-    Ascii["{shift £}"] = 233;
-    Ascii["{cbm n}"] = 234;
-    Ascii["{cbm q}"] = 235;
-    Ascii["{cbm d}"] = 236;
-    Ascii["{cbm z}"] = 237;
-    Ascii["{cbm s}"] = 238;
-    Ascii["{cbm p}"] = 239;
-    Ascii["{cbm a}"] = 240;
-    Ascii["{cbm e}"] = 241;
-    Ascii["{cbm r}"] = 242;
-    Ascii["{cbm w}"] = 243;
-    Ascii["{cbm h}"] = 244;
-    Ascii["{cbm j}"] = 245;
-    Ascii["{cbm l}"] = 246;
-    Ascii["{cbm y}"] = 247;
-    Ascii["{cbm u}"] = 248;
-    Ascii["{cbm o}"] = 249;
-    Ascii["{cbm @}"] = 250;
-    Ascii["{cbm f}"] = 251;
-    Ascii["{cbm c}"] = 252;
-    Ascii["{cbm x}"] = 253;
-    Ascii["{cbm v}"] = 254;
-    Ascii["{pi}"] = 255;
-}
+//---------------------------------------------------------------------------
 main();
 /*
 Grammar:
