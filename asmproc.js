@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    };
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -1418,7 +1418,7 @@ function ParseCond(W) {
             BranchNot = "BCS *";
         }
         else if (Operator == ">" && signedcond == false) {
-            Branch = "BEQ .+4\tBCS *";
+            Branch = "BEQ .+4§\tBCS *";
             BranchNot = "BCC *§\tBEQ *";
         }
         else if (Operator == ">=" && signedcond == true) {
@@ -1437,7 +1437,7 @@ function ParseCond(W) {
             cmp_not_needed = true;
         }
         else if (Operator == ">" && signedcond == true) {
-            Branch = "BEQ .+4\tBPL *";
+            Branch = "BEQ .+4§\tBPL *";
             BranchNot = "BMI *§\tBEQ *";
             cmp_not_needed = true;
         }
@@ -1479,7 +1479,7 @@ function ParseCond(W) {
             BranchNot = "JR C, *";
         }
         else if (Operator == ">" && signedcond == false) {
-            Branch = "JR Z, .+4\tJR C, *";
+            Branch = "JR Z, .+4§\tJR C, *";
             BranchNot = "JR NC, *§\tJR Z, *";
         }
         else if (Operator == ">=" && signedcond == true) {
@@ -1495,7 +1495,7 @@ function ParseCond(W) {
             BranchNot = "JP NS, *";
         }
         else if (Operator == ">" && signedcond == true) {
-            Branch = "JR Z, .+4\tJP NS, *";
+            Branch = "JR Z, .+4§\tJP NS, *";
             BranchNot = "JP S, *§\tJR Z, *";
         }
         else

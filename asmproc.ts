@@ -1544,11 +1544,11 @@ function ParseCond(W: string)
       else if(Operator==">=" && signedcond==false) { Branch = "BCS *";           BranchNot = "BCC *";           }
       else if(Operator=="<=" && signedcond==false) { Branch = "BCC *§\tBEQ *";   BranchNot = "BEQ .+4§\tBCS *"; }
       else if(Operator=="<"  && signedcond==false) { Branch = "BCC *";           BranchNot = "BCS *";           }
-      else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4\tBCS *";  BranchNot = "BCC *§\tBEQ *";   }
+      else if(Operator==">"  && signedcond==false) { Branch = "BEQ .+4§\tBCS *"; BranchNot = "BCC *§\tBEQ *";   }
       else if(Operator==">=" && signedcond==true ) { Branch = "BPL *";           BranchNot = "BMI *";             cmp_not_needed = true; }
       else if(Operator=="<=" && signedcond==true ) { Branch = "BMI *§\tBEQ *";   BranchNot = "BEQ .+4§\tBPL *";   cmp_not_needed = true; }
       else if(Operator=="<"  && signedcond==true ) { Branch = "BMI *";           BranchNot = "BPL *";             cmp_not_needed = true; }
-      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4\tBPL *";  BranchNot = "BMI *§\tBEQ *";     cmp_not_needed = true; }
+      else if(Operator==">"  && signedcond==true ) { Branch = "BEQ .+4§\tBPL *"; BranchNot = "BMI *§\tBEQ *";     cmp_not_needed = true; }
       else Operator = "#";
 
       if(Operand.startsWith("#") && cmp_not_needed && Eval1 !== "") 
@@ -1567,11 +1567,11 @@ function ParseCond(W: string)
       else if(Operator==">=" && signedcond==false) { Branch = "JR C, *";             BranchNot = "JR NC,*"; }
       else if(Operator=="<=" && signedcond==false) { Branch = "JR NC, *§\tJR Z, *";  BranchNot = "JR Z, .+4§\tJR C, *"; }
       else if(Operator=="<"  && signedcond==false) { Branch = "JR NC, *";            BranchNot = "JR C, *"; }
-      else if(Operator==">"  && signedcond==false) { Branch = "JR Z, .+4\tJR C, *";  BranchNot = "JR NC, *§\tJR Z, *"; }
+      else if(Operator==">"  && signedcond==false) { Branch = "JR Z, .+4§\tJR C, *"; BranchNot = "JR NC, *§\tJR Z, *"; }
       else if(Operator==">=" && signedcond==true ) { Branch = "JP NS, *";            BranchNot = "JP S, *"; }
       else if(Operator=="<=" && signedcond==true ) { Branch = "JP S, *§\tJR Z, *";   BranchNot = "JR Z, .+4§\tJP NS, *"; }
       else if(Operator=="<"  && signedcond==true ) { Branch = "JP S, *";             BranchNot = "JP NS, *"; }
-      else if(Operator==">"  && signedcond==true ) { Branch = "JR Z, .+4\tJP NS, *"; BranchNot = "JP S, *§\tJR Z, *"; }
+      else if(Operator==">"  && signedcond==true ) { Branch = "JR Z, .+4§\tJP NS, *";BranchNot = "JP S, *§\tJR Z, *"; }
       else Operator = "#";
    }
 
