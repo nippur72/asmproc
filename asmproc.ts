@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+// TODO split table word
+// TODO define function ?
+// TODO ifdef ... then include
+// TODO dim as byte/word/bytes[]/words absolute
+// TODO sintax for eliminating #0 ? 
+// TODO simulate AST parsing
+// TODO lo/hi tables
+// TODO locate and use Basic V2 variables
 // TODO ELSE IF
 // TODO --version
 // TODO macro in if single
@@ -46,17 +54,6 @@
 // TODO basic tokenizer: {rev shift} ?
 // TODO basic tokenizer: {cbm } shortcuts
 // TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
-
-/*
-
-startfrom:
-  - if single
-  - bitmap
-  - sprite
-  - float
-  - const
-
-*/
 
 /*
 TO DO
@@ -265,7 +262,7 @@ let AllMacros: Macro[] = [];
 
 let Ferr: string;
 
-import { target, Jump, MOD } from "./cross";
+import { target, Jump, MOD, define } from "./cross";
 import { GetParm, GetToken, Trim, UpperCase } from "./utils";
 import { IsBasicStart, IsBasic, IsBasicEnd } from "./basic";
 
@@ -506,6 +503,25 @@ function MakeAllUpperCase()
     L.SetText(UpperCase(Whole));
 }
 
+function IsIFDEFIncludeSingle(Linea: string, nl: number): string | undefined
+{   
+   // "_ #ifdef _ {cond} _ then _ include {file}";
+   const R = new RegExp(/\s*#ifdef\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+then\s+include\s+(.*)/i);
+   const match = R.exec(Linea);
+
+   if(match === null) return undefined;
+
+   const [ all, id, includeFile ] = match;   
+
+   const upperDefines = defines.map(e=>e.toUpperCase());
+   const upperId = id.toUpperCase();
+   const defined = upperDefines.indexOf(upperId) !== -1;
+
+   const Result = defined ? `include ${includeFile}` : "";
+   
+   return Result;
+}
+
 // spezza su piu linee #IFDEF / #IFNDEF su singola linea 
 function IsIFDEFSingle(Linea: string, nl: number): string | undefined
 {   
@@ -551,16 +567,52 @@ function IsReservedKeywords(Linea: string, nl: number): string|undefined
    return undefined;
 }
 
+function RemoveCommentInclude()
+{
+   for(;;)
+   {
+      RemoveComments();
+      RemoveIfDefIncludeSingle();
+      let hasinclude = ResolveInclude();
+      if(!hasinclude) break;
+   }
+}
+
+function RemoveIfDefIncludeSingle() 
+{
+   // substitute DASM IF THEN on single line
+   for(let t=0; t<L.Count; t++)
+   {
+   	let Dummy = L.Strings[t];
+      let ReplaceTo = IsIFDEFIncludeSingle(Dummy, t);
+
+      if(ReplaceTo !== undefined)
+    	{
+         L.Strings[t] = ReplaceTo;
+      }
+   }
+}
+
+function RemoveIfDefSingle() 
+{
+   // substitute DASM IF THEN on single line
+   for(let t=0; t<L.Count; t++)
+   {
+   	let Dummy = L.Strings[t];
+      let ReplaceTo = IsIFDEFSingle(Dummy, t);
+
+      if(ReplaceTo !== undefined)
+    	{
+         L.Strings[t] = ReplaceTo;
+      }
+   }
+}
+
 function ProcessFile()
 {
    let t;
 
-   for(;;)
-   {
-      RemoveComments();
-      let hasinclude = ResolveInclude();
-      if(!hasinclude) break;
-   }
+   RemoveCommentInclude();
 
    // remove \r new lines and tabs
    L.SetText(L.Text().replace(/\r/g, ""));
@@ -580,19 +632,9 @@ function ProcessFile()
    RemoveColon();
 
    MakeAllUpperCase();
-
-   // substitute DASM IF THEN on single line
-   for(t=0; t<L.Count; t++)
-   {
-   	let Dummy = L.Strings[t];
-      let ReplaceTo = IsIFDEFSingle(Dummy, t);
-
-      if(ReplaceTo !== undefined)
-    	{
-         L.Strings[t] = ReplaceTo;
-      }
-   }
    
+   RemoveIfDefSingle();
+
    // change § into newlines (needed for DASM IF-THENs)   
    L.SetText(L.Text().replace(/§/g, "\n"));
 
@@ -769,8 +811,14 @@ function ProcessFile()
 
    // add defines on top of the file
    const definecode = defines.map(e=>{
-      if(e.indexOf("=")<0) return `${e}=1`;
-      else return `${e}=1`;
+      const R = new RegExp(/\s*([_a-zA-Z]+[_a-zA-Z0-9]*)(\s*=\s*(.*))?\s*/ig);
+      const match = R.exec(e);      
+      if(match != null) {
+         const [ all, id, eqpart, value ] = match;
+         if(value !== undefined) return define(id,value);
+         else return define(id,"1");
+      }
+      else return "";
    }).join("§");
    
    L.Strings[0] = definecode + L.Strings[0];
@@ -2224,4 +2272,29 @@ Grammar:
 - [label:] bitmap [...]
 - [label:] float [...]
 
+on var goto a,b,c
+
+version1:
+   lda var
+   asl
+   tax
+   jmp (table,x)
+   table word a,b,c
+
+version2:
+   ldx var
+   lda table.hi,x
+   sta **salto
+   lda table.lo,x
+   sta **salto+1   
+   jmp **salto
+
+version3:
+   ldx var
+   lda table.hi,x
+   pha
+   lda table.lo,x
+   pha
+   rts
+   
 */

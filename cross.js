@@ -91,3 +91,13 @@ function lobyte(byte) {
     throw "";
 }
 exports.lobyte = lobyte;
+function define(id, val) {
+    if (exports.target.dasm)
+        return id + " EQU " + val;
+    else if (exports.target.ca65)
+        return id + " EQU " + val;
+    else if (exports.target.z80asm)
+        return id + " EQU " + val;
+    throw "";
+}
+exports.define = define;

@@ -69,3 +69,9 @@ export function lobyte(byte: string) {
    throw "";
 }
 
+export function define(id: string, val: string) {
+      if(target.dasm)   return `${id} EQU ${val}`; 
+   else if(target.ca65)   return `${id} EQU ${val}`; 
+   else if(target.z80asm) return `${id} EQU ${val}`; 
+   throw "";
+}

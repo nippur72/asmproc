@@ -449,26 +449,44 @@ Example
    INC VIDEO      
 ```
 
-## REDEFINED DASM KEYWORDS
+## INCLUDE
 
-Because `IF`, `ELSE`, `ENDIF` have a new meaning in `asmproc`, the corresponding DASM 
-keywords are accessible with the `#` prefix:
+Allows inclusion of other files.
 ```
-#if      translates into  IF
-#else    translates into  ELSE
-#endif   translates into  ENDIF
+include "file"
 ```
+Include cannot be part of any conditional block, the only allowed
+conditional syntax is
+```
+#ifdef SYMBOL then include "file"
+```
+where `SYMBOL` is a symbol defined from the command line prompt with the `-d` option.
 
-The following two keywords are also available for convenience:
-```
-#ifdef   translates into  IFCONST
-#ifndef  translates into  IFNCONST
-```
+## CONDITIONAL COMPILATION
 
-also, `#IFDEF`/`#IFNDEF` have a single-line syntax:
+Conditional compilation is available via `#if`/`#ifdef`/`#ifndef`/`#else`/`#endif`:
+
 ```
-#ifdef  <symbol> then <statement>
-#ifndef <symbol> then <statement>
+#ifdef  <symbol> then <statement>   ; on a single line
+#ifndef <symbol> then <statement>   ; on a single line
+
+#ifdef <symbol>
+   [...]           ; on multiple lines
+#else
+   [...]           ; else block is optional
+#endif
+
+#ifndef <symbol>
+   [...]           ; on multiple lines
+#else
+   [...]           ; else block is optional
+#endif
+
+#ifdef <expression>
+   [...]           ; on multiple lines
+#else
+   [...]           ; else block is optional
+#endif
 ```
 
 ## LICENSE

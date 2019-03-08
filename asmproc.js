@@ -330,6 +330,19 @@ function MakeAllUpperCase() {
     var Whole = L.Text();
     L.SetText(utils_1.UpperCase(Whole));
 }
+function IsIFDEFIncludeSingle(Linea, nl) {
+    // "_ #ifdef _ {cond} _ then _ include {file}";
+    var R = new RegExp(/\s*#ifdef\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+then\s+include\s+(.*)/i);
+    var match = R.exec(Linea);
+    if (match === null)
+        return undefined;
+    var all = match[0], id = match[1], includeFile = match[2];
+    var upperDefines = defines.map(function (e) { return e.toUpperCase(); });
+    var upperId = id.toUpperCase();
+    var defined = upperDefines.indexOf(upperId) !== -1;
+    var Result = defined ? "include " + includeFile : "";
+    return Result;
+}
 // spezza su piu linee #IFDEF / #IFNDEF su singola linea 
 function IsIFDEFSingle(Linea, nl) {
     // "_ #ifdef|#ifndef _ {cond} _ then {statement}";
@@ -367,14 +380,38 @@ function IsReservedKeywords(Linea, nl) {
     }
     return undefined;
 }
-function ProcessFile() {
-    var t;
+function RemoveCommentInclude() {
     for (;;) {
         RemoveComments();
+        RemoveIfDefIncludeSingle();
         var hasinclude = ResolveInclude();
         if (!hasinclude)
             break;
     }
+}
+function RemoveIfDefIncludeSingle() {
+    // substitute DASM IF THEN on single line
+    for (var t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = IsIFDEFIncludeSingle(Dummy, t);
+        if (ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;
+        }
+    }
+}
+function RemoveIfDefSingle() {
+    // substitute DASM IF THEN on single line
+    for (var t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = IsIFDEFSingle(Dummy, t);
+        if (ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;
+        }
+    }
+}
+function ProcessFile() {
+    var t;
+    RemoveCommentInclude();
     // remove \r new lines and tabs
     L.SetText(L.Text().replace(/\r/g, ""));
     L.SetText(L.Text().replace(/\t/g, "   "));
@@ -388,14 +425,7 @@ function ProcessFile() {
     ModOperator();
     RemoveColon();
     MakeAllUpperCase();
-    // substitute DASM IF THEN on single line
-    for (t = 0; t < L.Count; t++) {
-        var Dummy = L.Strings[t];
-        var ReplaceTo = IsIFDEFSingle(Dummy, t);
-        if (ReplaceTo !== undefined) {
-            L.Strings[t] = ReplaceTo;
-        }
-    }
+    RemoveIfDefSingle();
     // change § into newlines (needed for DASM IF-THENs)   
     L.SetText(L.Text().replace(/§/g, "\n"));
     // self modifying labels
@@ -577,10 +607,17 @@ function ProcessFile() {
     */
     // add defines on top of the file
     var definecode = defines.map(function (e) {
-        if (e.indexOf("=") < 0)
-            return e + "=1";
+        var R = new RegExp(/\s*([_a-zA-Z]+[_a-zA-Z0-9]*)(\s*=\s*(.*))?\s*/ig);
+        var match = R.exec(e);
+        if (match != null) {
+            var all = match[0], id = match[1], eqpart = match[2], value = match[3];
+            if (value !== undefined)
+                return cross_1.define(id, value);
+            else
+                return cross_1.define(id, "1");
+        }
         else
-            return e + "=1";
+            return "";
     }).join("§");
     L.Strings[0] = definecode + L.Strings[0];
     // change § into newlines
@@ -2072,4 +2109,29 @@ Grammar:
 - [label:] bitmap [...]
 - [label:] float [...]
 
+on var goto a,b,c
+
+version1:
+   lda var
+   asl
+   tax
+   jmp (table,x)
+   table word a,b,c
+
+version2:
+   ldx var
+   lda table.hi,x
+   sta **salto
+   lda table.lo,x
+   sta **salto+1
+   jmp **salto
+
+version3:
+   ldx var
+   lda table.hi,x
+   pha
+   lda table.lo,x
+   pha
+   rts
+   
 */
