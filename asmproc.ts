@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// TODO include binary
 // TODO split table word
 // TODO define function ?
 // TODO ifdef ... then include
@@ -262,6 +263,13 @@ let AllMacros: Macro[] = [];
 
 let Ferr: string;
 
+let Dims: string[] = [];
+
+function emitConstDim(t: number) {
+
+   L.SetText(L.Text().replace(/§/g, "\n"));
+}
+
 import { target, Jump, MOD, define } from "./cross";
 import { GetParm, GetToken, Trim, UpperCase } from "./utils";
 import { IsBasicStart, IsBasic, IsBasicEnd } from "./basic";
@@ -442,32 +450,63 @@ function ModOperator()
 
 function ResolveInclude(): boolean
 {
-    for(let t=0; t<L.Count; t++)
-    {
-        let Linea = UpperCase(Trim(L.Strings[t]))+" ";
-        
-        let Include = GetParm(Linea, " ", 0);
-                
-        if(Include=="INCLUDE")
-        {
-           let NomeFile = GetParm(Linea, " ", 1);
-           if(NomeFile.length < 2)
-           {
-              error(`invalid file name "${NomeFile}" in include`, t);
-           }
-           NomeFile = RemoveQuote(NomeFile);
-           if(!FileExists(NomeFile))
-           {
-              error(`include file "${NomeFile}" not found`, t);
-           }
-           let IF = new TStringList();
-           IF.LoadFromFile(NomeFile);
-           L.Strings[t] = IF.Text();           
-           return true;
-        }
-    }
-    return false;
+   for(let t=0; t<L.Count; t++)
+   {
+      let Linea = L.Strings[t];
+
+      const R = new RegExp(/\s*include(\s+binary)?\s+\"(.*)\"\s*/ig);
+
+      const match = R.exec(Linea);
+
+      if(match !== null) {
+         const [all, binary, nomefile] = match;
+         if(!FileExists(nomefile)) {
+            error(`include file "${nomefile}" not found`, t);
+         }
+
+         const file = fs.readFileSync(nomefile);
+         let content;
+
+         if(binary !== undefined) content = " byte " + Array.from(file).map(e => String(e)).join(",");
+         else content = file.toString();         
+
+         L.Strings[t] = content;
+         return true;           
+      }         
+   }
+   return false;
 }
+
+/*
+function ResolveInclude(): boolean
+{
+   for(let t=0; t<L.Count; t++)
+   {
+      let Linea = UpperCase(Trim(L.Strings[t]))+" ";
+            
+      let Include = GetParm(Linea, " ", 0);
+               
+      if(Include=="INCLUDE")
+      {
+         let NomeFile = GetParm(Linea, " ", 1);
+         if(NomeFile.length < 2)
+         {
+            error(`invalid file name "${NomeFile}" in include`, t);
+         }
+         NomeFile = RemoveQuote(NomeFile);
+         if(!FileExists(NomeFile))
+         {
+            error(`include file "${NomeFile}" not found`, t);
+         }
+         let IF = new TStringList();
+         IF.LoadFromFile(NomeFile);
+         L.Strings[t] = IF.Text();           
+         return true;
+      }
+   }
+   return false;
+}
+*/
 
 function IsIdentifier(s: string) 
 {
@@ -501,6 +540,32 @@ function MakeAllUpperCase()
 {
     let Whole = L.Text();
     L.SetText(UpperCase(Whole));
+}
+
+
+// dim x as byte
+// dim x as integer
+// dim x as byte at $3000
+// dim x as byte in zero page
+// dim x as byte init 5
+
+function IsDim(Linea: string, nl: number): string | undefined
+{   
+   const R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+   const match = R.exec(Linea);
+
+   if(match === null) return undefined;
+
+   const [ all, id, tipo, part, atstring, atvalue, zeropage, initstring, initvalue ] = match;   
+
+   let Result = "";
+
+        if(atstring !== undefined) Result = `const ${id} = ${atvalue}`;
+   else if(zeropage !== undefined) throw `not implemented`;
+   else if(initvalue !== undefined) Dims.push(`${id} ${tipo} ${initvalue}`);
+   else                             Dims.push(`${id} ${tipo} 0`);
+   
+   return Result;
 }
 
 function IsIFDEFIncludeSingle(Linea: string, nl: number): string | undefined
@@ -758,6 +823,18 @@ function ProcessFile()
 
    if(!StackIf.IsEmpty) error("malformed IF");
    
+   // substitute DIM (before const)
+   for(t=0;t<L.Count;t++)
+   {
+    	let Dummy = L.Strings[t];
+    	let ReplaceTo = IsDim(Dummy, t);
+
+      if(ReplaceTo !== undefined) 
+    	{
+         L.Strings[t] = ReplaceTo;
+      }
+   } 
+
    /*
    // bitmap values
    for(t=0;t<L.Count;t++)
@@ -777,7 +854,7 @@ function ProcessFile()
       if(ReplaceTo !== undefined) L.Strings[t] = ReplaceTo;      
    }
    */
-
+   
    for(t=0;t<L.Count;t++)
    {
     	let Dummy = L.Strings[t];
@@ -823,6 +900,10 @@ function ProcessFile()
    
    L.Strings[0] = definecode + L.Strings[0];
 
+   // add global variables created with DIM
+   L.Add(Dims.join("§"));      
+   Dims = [];
+
    // change § into newlines
    L.SetText(L.Text().replace(/§/g,"\n"));
 
@@ -836,7 +917,7 @@ function ProcessFile()
     	{
          L.Strings[t] = ReplaceTo;
       }
-   }   
+   }    
 }
 
 
@@ -2153,7 +2234,7 @@ function IsENDSUB(Linea: string, nl: number): string | undefined
       nl = StackSub.Pop();
 
       let Lab = Label("SUB",nl,"END")+":§";
-      let ReplaceTo = Lab+"   rts";
+      let ReplaceTo = Lab + "   rts";      
       
       return ReplaceTo;
    }

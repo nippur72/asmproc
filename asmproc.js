@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -136,6 +136,10 @@ var StackIf_U = new TStringList();
 var StackFor_U = new TStringList();
 var AllMacros = [];
 var Ferr;
+var Dims = [];
+function emitConstDim(t) {
+    L.SetText(L.Text().replace(/§/g, "\n"));
+}
 var cross_1 = require("./cross");
 var utils_1 = require("./utils");
 var basic_1 = require("./basic");
@@ -282,25 +286,56 @@ function ModOperator() {
 }
 function ResolveInclude() {
     for (var t = 0; t < L.Count; t++) {
-        var Linea = utils_1.UpperCase(utils_1.Trim(L.Strings[t])) + " ";
-        var Include = utils_1.GetParm(Linea, " ", 0);
-        if (Include == "INCLUDE") {
-            var NomeFile = utils_1.GetParm(Linea, " ", 1);
-            if (NomeFile.length < 2) {
-                error("invalid file name \"" + NomeFile + "\" in include", t);
+        var Linea = L.Strings[t];
+        var R = new RegExp(/\s*include(\s+binary)?\s+\"(.*)\"\s*/ig);
+        var match = R.exec(Linea);
+        if (match !== null) {
+            var all = match[0], binary = match[1], nomefile = match[2];
+            if (!FileExists(nomefile)) {
+                error("include file \"" + nomefile + "\" not found", t);
             }
-            NomeFile = RemoveQuote(NomeFile);
-            if (!FileExists(NomeFile)) {
-                error("include file \"" + NomeFile + "\" not found", t);
-            }
-            var IF = new TStringList();
-            IF.LoadFromFile(NomeFile);
-            L.Strings[t] = IF.Text();
+            var file = fs_1.default.readFileSync(nomefile);
+            var content = void 0;
+            if (binary !== undefined)
+                content = " byte " + Array.from(file).map(function (e) { return String(e); }).join(",");
+            else
+                content = file.toString();
+            L.Strings[t] = content;
             return true;
         }
     }
     return false;
 }
+/*
+function ResolveInclude(): boolean
+{
+   for(let t=0; t<L.Count; t++)
+   {
+      let Linea = UpperCase(Trim(L.Strings[t]))+" ";
+            
+      let Include = GetParm(Linea, " ", 0);
+               
+      if(Include=="INCLUDE")
+      {
+         let NomeFile = GetParm(Linea, " ", 1);
+         if(NomeFile.length < 2)
+         {
+            error(`invalid file name "${NomeFile}" in include`, t);
+         }
+         NomeFile = RemoveQuote(NomeFile);
+         if(!FileExists(NomeFile))
+         {
+            error(`include file "${NomeFile}" not found`, t);
+         }
+         let IF = new TStringList();
+         IF.LoadFromFile(NomeFile);
+         L.Strings[t] = IF.Text();
+         return true;
+      }
+   }
+   return false;
+}
+*/
 function IsIdentifier(s) {
     var R = new RegExp(/^\s*[_a-zA-Z]+[_a-zA-Z0-9]*$/gmi);
     var match = R.exec(s);
@@ -329,6 +364,28 @@ function RemoveColon() {
 function MakeAllUpperCase() {
     var Whole = L.Text();
     L.SetText(utils_1.UpperCase(Whole));
+}
+// dim x as byte
+// dim x as integer
+// dim x as byte at $3000
+// dim x as byte in zero page
+// dim x as byte init 5
+function IsDim(Linea, nl) {
+    var R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+    var match = R.exec(Linea);
+    if (match === null)
+        return undefined;
+    var all = match[0], id = match[1], tipo = match[2], part = match[3], atstring = match[4], atvalue = match[5], zeropage = match[6], initstring = match[7], initvalue = match[8];
+    var Result = "";
+    if (atstring !== undefined)
+        Result = "const " + id + " = " + atvalue;
+    else if (zeropage !== undefined)
+        throw "not implemented";
+    else if (initvalue !== undefined)
+        Dims.push(id + " " + tipo + " " + initvalue);
+    else
+        Dims.push(id + " " + tipo + " 0");
+    return Result;
 }
 function IsIFDEFIncludeSingle(Linea, nl) {
     // "_ #ifdef _ {cond} _ then _ include {file}";
@@ -559,6 +616,14 @@ function ProcessFile() {
     }
     if (!StackIf.IsEmpty)
         error("malformed IF");
+    // substitute DIM (before const)
+    for (t = 0; t < L.Count; t++) {
+        var Dummy = L.Strings[t];
+        var ReplaceTo = IsDim(Dummy, t);
+        if (ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;
+        }
+    }
     /*
     // bitmap values
     for(t=0;t<L.Count;t++)
@@ -620,6 +685,9 @@ function ProcessFile() {
             return "";
     }).join("§");
     L.Strings[0] = definecode + L.Strings[0];
+    // add global variables created with DIM
+    L.Add(Dims.join("§"));
+    Dims = [];
     // change § into newlines
     L.SetText(L.Text().replace(/§/g, "\n"));
     // substitute reserved keywords

@@ -386,6 +386,16 @@ Example:
 const NULL = $0
 ```
 
+## DIM
+
+Creates a variable.
+```
+dim b as byte         ; creates a variable in memory
+dim w as word init 3  ; creates a variable in memory and initializes to 3
+
+dim border as byte at 53280  ; creates a variable at absolute address 53280
+```
+
 ## INLINE BASIC
 
 ```
@@ -453,8 +463,10 @@ Example
 
 Allows inclusion of other files.
 ```
-include "file"
+include "file"          ; includes a source file
+include binary "file"   ; includes a binary file
 ```
+
 Include cannot be part of any conditional block, the only allowed
 conditional syntax is
 ```
