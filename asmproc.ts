@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-// TODO include binary
+// TODO include <lib>
+// TODO fix bug rem {}
+// TODO fix bug no build long basic line with {}
 // TODO split table word
 // TODO define function ?
 // TODO ifdef ... then include
@@ -467,8 +469,18 @@ function ResolveInclude(): boolean
          const file = fs.readFileSync(nomefile);
          let content;
 
-         if(binary !== undefined) content = " byte " + Array.from(file).map(e => String(e)).join(",");
-         else content = file.toString();         
+         if(binary !== undefined) 
+         {
+            content = Array.from(file).map((e,i) => {
+               const initial = i % 16 === 0 ? "§ byte " : "";
+               const comma = i % 16 !== 15 ? "," : "";
+               return `${initial} ${e}${comma}`;                    
+            }).join("");      
+         }
+         else 
+         {
+            content = file.toString();         
+         }
 
          L.Strings[t] = content;
          return true;           

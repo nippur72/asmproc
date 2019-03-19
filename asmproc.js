@@ -296,10 +296,16 @@ function ResolveInclude() {
             }
             var file = fs_1.default.readFileSync(nomefile);
             var content = void 0;
-            if (binary !== undefined)
-                content = " byte " + Array.from(file).map(function (e) { return String(e); }).join(",");
-            else
+            if (binary !== undefined) {
+                content = Array.from(file).map(function (e, i) {
+                    var initial = i % 16 === 0 ? "§ byte " : "";
+                    var comma = i % 16 !== 15 ? "," : "";
+                    return initial + " " + e + comma;
+                }).join("");
+            }
+            else {
                 content = file.toString();
+            }
             L.Strings[t] = content;
             return true;
         }
