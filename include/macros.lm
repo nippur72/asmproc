@@ -100,6 +100,16 @@ macro ld "y", "a"
     tay
 end macro
 
+MACRO ld "ya", const
+   lda #(({2}) MOD 256)
+   ldy #(({2})/256)
+END MACRO
+
+MACRO ld "ya", mem
+   lda {1}
+   ldy {1}+1
+END MACRO
+
 macro ld mem, mem
     lda {2}    
     sta {1}
