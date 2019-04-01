@@ -1,5 +1,3 @@
-C64 = 1
-
 ; Kernal entries 
 
 GETIN   = $ffe4     ; getin rom kernel routine
