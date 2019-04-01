@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 // TODO #end if alias for #endif
-// TODO -d add newline at end
-// TODO include <lib>
 // TODO fix bug rem {}
 // TODO fix bug no build long basic line with {}
 // TODO split table word
@@ -928,7 +926,7 @@ function ProcessFile()
       else return "";
    }).join("§");
    
-   L.Strings[0] = definecode + L.Strings[0];
+   L.Strings[0] = definecode + "§" + L.Strings[0];
 
    // add global variables created with DIM
    L.Add(Dims.join("§"));      
