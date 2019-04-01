@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    };
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -18,6 +18,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs_1 = __importDefault(require("fs"));
+var path_1 = __importDefault(require("path"));
 var command_line_args_1 = __importDefault(require("command-line-args"));
 function parseOptions(optionDefinitions) {
     try {
@@ -287,30 +288,39 @@ function ModOperator() {
 function ResolveInclude() {
     for (var t = 0; t < L.Count; t++) {
         var Linea = L.Strings[t];
-        var R = new RegExp(/\s*include(\s+binary)?\s+\"(.*)\"\s*/ig);
-        var match = R.exec(Linea);
-        if (match !== null) {
-            var all = match[0], binary = match[1], nomefile = match[2];
-            if (!FileExists(nomefile)) {
-                error("include file \"" + nomefile + "\" not found", t);
-            }
-            var file = fs_1.default.readFileSync(nomefile);
-            var content = void 0;
-            if (binary !== undefined) {
-                content = Array.from(file).map(function (e, i) {
-                    var initial = i % 16 === 0 ? "§ byte " : "";
-                    var comma = i % 16 !== 15 ? "," : "";
-                    return initial + " " + e + comma;
-                }).join("");
-            }
-            else {
-                content = file.toString();
-            }
-            L.Strings[t] = content;
+        var ReplaceTo = ResolveIncludeInner(Linea);
+        if (ReplaceTo !== undefined) {
+            L.Strings[t] = ReplaceTo;
             return true;
         }
     }
     return false;
+}
+function ResolveIncludeInner(Linea) {
+    var R = new RegExp(/\s*include(\s+binary)?\s+([\"<])(.*)([\">])\s*/ig);
+    var match = R.exec(Linea);
+    if (match === null)
+        return undefined;
+    var all = match[0], binary = match[1], openquota = match[2], nf = match[3], closequota = match[4];
+    if (openquota === '<' && closequota !== '>')
+        return undefined;
+    var nomefile = openquota === '"' ? nf : path_1.default.join(__dirname, "include", nf);
+    if (!FileExists(nomefile)) {
+        error("include file \"" + nomefile + "\" not found");
+    }
+    var file = fs_1.default.readFileSync(nomefile);
+    var content;
+    if (binary !== undefined) {
+        content = Array.from(file).map(function (e, i) {
+            var initial = i % 16 === 0 ? "§ byte " : "";
+            var comma = i % 16 !== 15 ? "," : "";
+            return initial + " " + e + comma;
+        }).join("");
+    }
+    else {
+        content = file.toString();
+    }
+    return content;
 }
 /*
 function ResolveInclude(): boolean

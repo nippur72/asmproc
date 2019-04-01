@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// TODO #end if alias for #endif
+// TODO -d add newline at end
 // TODO include <lib>
 // TODO fix bug rem {}
 // TODO fix bug no build long basic line with {}
@@ -111,6 +113,7 @@ Z           Z    zero
 */
 
 import fs from "fs";
+import path from "path";
 
 import commandLineArgs, { OptionDefinition } from 'command-line-args';
 
@@ -456,37 +459,52 @@ function ResolveInclude(): boolean
    {
       let Linea = L.Strings[t];
 
-      const R = new RegExp(/\s*include(\s+binary)?\s+\"(.*)\"\s*/ig);
+      const ReplaceTo = ResolveIncludeInner(Linea);
 
-      const match = R.exec(Linea);
-
-      if(match !== null) {
-         const [all, binary, nomefile] = match;
-         if(!FileExists(nomefile)) {
-            error(`include file "${nomefile}" not found`, t);
-         }
-
-         const file = fs.readFileSync(nomefile);
-         let content;
-
-         if(binary !== undefined) 
-         {
-            content = Array.from(file).map((e,i) => {
-               const initial = i % 16 === 0 ? "§ byte " : "";
-               const comma = i % 16 !== 15 ? "," : "";
-               return `${initial} ${e}${comma}`;                    
-            }).join("");      
-         }
-         else 
-         {
-            content = file.toString();         
-         }
-
-         L.Strings[t] = content;
-         return true;           
-      }         
+      if(ReplaceTo !== undefined) {
+         L.Strings[t] = ReplaceTo;
+         return true;
+      }
    }
+
    return false;
+}
+
+function ResolveIncludeInner(Linea: string): string | undefined
+{
+   const R = new RegExp(/\s*include(\s+binary)?\s+([\"<])(.*)([\">])\s*/ig);
+
+   const match = R.exec(Linea);
+
+   if(match === null) return undefined;
+
+   const [all, binary, openquota, nf, closequota] = match;
+
+   if(openquota === '<' && closequota !== '>') return undefined;
+
+   const nomefile = openquota === '"' ? nf : path.join(__dirname, "include", nf);
+
+   if(!FileExists(nomefile)) {
+      error(`include file "${nomefile}" not found`);
+   }
+
+   const file = fs.readFileSync(nomefile);
+   let content;
+
+   if(binary !== undefined) 
+   {
+      content = Array.from(file).map((e,i) => {
+         const initial = i % 16 === 0 ? "§ byte " : "";
+         const comma = i % 16 !== 15 ? "," : "";
+         return `${initial} ${e}${comma}`;                    
+      }).join("");      
+   }
+   else 
+   {
+      content = file.toString();         
+   }
+
+   return content;
 }
 
 /*
@@ -2272,6 +2290,7 @@ function _IsConst(Linea: string, nl: number): string | undefined
 
 import nearley from "nearley";
 import { Node, nodeToString } from "./node_all";
+import { pathToFileURL } from "url";
 
 const const_grammar = require("./const");
 

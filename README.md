@@ -474,6 +474,15 @@ conditional syntax is
 ```
 where `SYMBOL` is a symbol defined from the command line prompt with the `-d` option.
 
+You can also include files from the `include/` folder that is shipped along
+with Asmproc. Use `<>` instead of `""`:
+
+```
+include <vic20.lm>    
+include <macros.lm>    
+include <macros_16.lm>    
+```
+
 ## CONDITIONAL COMPILATION
 
 Conditional compilation is available via `#if`/`#ifdef`/`#ifndef`/`#else`/`#endif`:
