@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// TODO #end if alias for #endif
 // TODO fix bug rem {}
 // TODO fix bug no build long basic line with {}
 // TODO split table word
@@ -641,6 +640,7 @@ function IsReservedKeywords(Linea: string, nl: number): string|undefined
          Linea = Linea.replace("#IF","IF");
          Linea = Linea.replace("#ELSE","ELSE");
          Linea = Linea.replace("#ENDIF","ENDIF");
+         Linea = Linea.replace("#END IF","ENDIF");
          //Linea = Linea.replace("#INCLUDE","INCLUDE");
          let ReplaceTo = " " + Linea;
          return ReplaceTo;
@@ -652,6 +652,7 @@ function IsReservedKeywords(Linea: string, nl: number): string|undefined
          Linea = Linea.replace("#IF",".IF");
          Linea = Linea.replace("#ELSE",".ELSE");
          Linea = Linea.replace("#ENDIF",".ENDIF");
+         Linea = Linea.replace("#END IF",".ENDIF");
          //Linea = Linea.replace("#INCLUDE","INCLUDE");
          let ReplaceTo = " " + Linea;
          return ReplaceTo;
