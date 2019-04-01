@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -436,6 +436,7 @@ function IsReservedKeywords(Linea, nl) {
             Linea = Linea.replace("#IF", "IF");
             Linea = Linea.replace("#ELSE", "ELSE");
             Linea = Linea.replace("#ENDIF", "ENDIF");
+            Linea = Linea.replace("#END IF", "ENDIF");
             //Linea = Linea.replace("#INCLUDE","INCLUDE");
             var ReplaceTo = " " + Linea;
             return ReplaceTo;
@@ -446,6 +447,7 @@ function IsReservedKeywords(Linea, nl) {
             Linea = Linea.replace("#IF", ".IF");
             Linea = Linea.replace("#ELSE", ".ELSE");
             Linea = Linea.replace("#ENDIF", ".ENDIF");
+            Linea = Linea.replace("#END IF", ".ENDIF");
             //Linea = Linea.replace("#INCLUDE","INCLUDE");
             var ReplaceTo = " " + Linea;
             return ReplaceTo;
@@ -700,7 +702,7 @@ function ProcessFile() {
         else
             return "";
     }).join("§");
-    L.Strings[0] = definecode + L.Strings[0];
+    L.Strings[0] = definecode + "§" + L.Strings[0];
     // add global variables created with DIM
     L.Add(Dims.join("§"));
     Dims = [];
