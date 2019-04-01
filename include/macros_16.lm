@@ -4,7 +4,7 @@
 ; Only the A register is used (except ld16 (indirect))
 ; ======================================================
 
-; Summary
+; Summary:
 ;   add16, adc16
 ;   sub16, sbc16
 ;   inc16, dec16
@@ -14,27 +14,27 @@
 ;   push16, pop16
 
 macro add16 mem, const
-    lda {1}
-    clc
-    adc #(({2}) MOD 256)
-    sta {1}
-    lda {1}+1
-    #if {2} < 256
-       if carry then inc {1}+1
-    #else
-       adc #(({2})/256)
-       sta {1}+1
-    #endif    
+   lda {1}
+   clc
+   adc #(({2}) MOD 256)
+   sta {1}
+   lda {1}+1
+   #if {2} < 256
+      if carry then inc {1}+1
+   #else
+      adc #(({2})/256)
+      sta {1}+1
+   #endif    
 end macro
 
 macro add16 mem, mem
-    lda {1}
-    clc
-    adc {2}
-    sta {1}
-    lda {1}+1
-    adc {2}+1
-    sta {1}+1                    
+   lda {1}
+   clc
+   adc {2}
+   sta {1}
+   lda {1}+1
+   adc {2}+1
+   sta {1}+1                    
 end macro
 
 macro add16 mem, const, "1"
@@ -140,13 +140,14 @@ macro sbc16 mem, mem
 end macro
 
 macro inc16 mem
-    inc {1}
-    if zero then inc {1}+1
+   inc {1}
+   if zero then inc {1}+1
 end macro
 
 macro dec16 mem
-    dec {1}
-    if negative then dec {1}+1
+   lda {1}
+   if zero then dec {1}+1
+   dec {1}
 end macro
 
 macro ld16 mem, const
@@ -232,13 +233,13 @@ macro cmp16 mem, mem
 end macro
             
 macro shl16 mem
-    asl {1}
-    rol {1}+1
+   asl {1}
+   rol {1}+1
 end macro
 
 macro shr16 mem
-    lsr {1}
-    ror {1}+1
+   lsr {1}
+   ror {1}+1
 end macro
 
 macro push16 mem
