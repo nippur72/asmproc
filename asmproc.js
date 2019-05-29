@@ -6,7 +6,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    };
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -244,28 +244,33 @@ function RemoveComments() {
     // remove ; comments   
     var inbasic = false;
     for (var t = 0; t < L.Count; t++) {
-        var R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
-        var Linea = L.Strings[t];
-        var match = R.exec(Linea);
-        if (match !== null) {
-            var all = match[0], purged = match[1], comment = match[2];
-            // special case of ; comment in BASIC START / BASIC END
-            if (basic_1.IsBasicStart(purged)) {
-                inbasic = true;
-                L.Strings[t] = purged;
+        // repeat on the same line for multiple ; 
+        while (true) {
+            //const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+            var R = new RegExp(/(.*);(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);
+            var Linea = L.Strings[t];
+            var match = R.exec(Linea);
+            if (match !== null) {
+                var all = match[0], purged = match[1], comment = match[2];
+                // special case of ; comment in BASIC START / BASIC END
+                if (basic_1.IsBasicStart(purged)) {
+                    inbasic = true;
+                    L.Strings[t] = purged;
+                }
+                else if (basic_1.IsBasicEnd(purged)) {
+                    inbasic = false;
+                    L.Strings[t] = purged;
+                }
+                if (!inbasic)
+                    L.Strings[t] = purged;
             }
-            else if (basic_1.IsBasicEnd(purged)) {
-                inbasic = false;
-                L.Strings[t] = purged;
+            else {
+                if (basic_1.IsBasicStart(Linea))
+                    inbasic = true;
+                if (basic_1.IsBasicEnd(Linea))
+                    inbasic = false;
+                break;
             }
-            if (!inbasic)
-                L.Strings[t] = purged;
-        }
-        else {
-            if (basic_1.IsBasicStart(Linea))
-                inbasic = true;
-            if (basic_1.IsBasicEnd(Linea))
-                inbasic = false;
         }
     }
 }
@@ -364,7 +369,8 @@ function RemoveColon() {
     for (var t = 0; t < L.Count; t++) {
         while (true) {
             var Linea = L.Strings[t];
-            var R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);
+            //const R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+            var R = new RegExp(/(.*):(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);
             var match = R.exec(Linea);
             if (match !== null) {
                 var all = match[0], leftpart = match[1], rightpart = match[2];
@@ -1326,35 +1332,35 @@ function ParseCond(W) {
         Branch = cpu6502 ? "BNE *" : "JR NZ, *";
         BranchNot = cpu6502 ? "BEQ *" : "JR Z, *";
     }
-    else if (W == "C=1" || W == "CARRY") {
+    else if ((cpu6502 && W == "C=1") || W == "CARRY") {
         Eval = "";
         Branch = cpu6502 ? "BCS *" : "JR C, *";
         BranchNot = cpu6502 ? "BCC *" : "JR NC, *";
     }
-    else if (W == "C=0" || W == "NOT CARRY") {
+    else if ((cpu6502 && W == "C=0") || W == "NOT CARRY") {
         Eval = "";
         Branch = cpu6502 ? "BCC *" : "JR NC, *";
         BranchNot = cpu6502 ? "BCS *" : "JR C, *";
     }
     else if (W == "NEGATIVE" || W == "SIGN" || (cpu6502 && W == "N=1") || (cpuz80 && W == "S=1")) {
         Eval = "";
-        Branch = cpu6502 ? "BMI *" : "JP S, *";
-        BranchNot = cpu6502 ? "BPL *" : "JP NS, *";
+        Branch = cpu6502 ? "BMI *" : "JP M, *";
+        BranchNot = cpu6502 ? "BPL *" : "JP P, *";
     }
     else if (W == "NOT NEGATIVE" || W == "NOT SIGN" || (cpu6502 && W == "N=0") || (cpuz80 && W == "S=0")) {
         Eval = "";
-        Branch = cpu6502 ? "BPL *" : "JP NS, *";
-        BranchNot = cpu6502 ? "BMI *" : "JP S, *";
+        Branch = cpu6502 ? "BPL *" : "JP P, *";
+        BranchNot = cpu6502 ? "BMI *" : "JP M, *";
     }
     else if (W == "V=1" || W == "OVERFLOW") {
         Eval = "";
-        Branch = cpu6502 ? "BVS *" : "JP V, *";
-        BranchNot = cpu6502 ? "BVC *" : "JP NV, *";
+        Branch = cpu6502 ? "BVS *" : "JP PE, *";
+        BranchNot = cpu6502 ? "BVC *" : "JP PO, *";
     }
     else if (W == "V=0" || W == "NOT OVERFLOW") {
         Eval = "";
-        Branch = cpu6502 ? "BVC *" : "JP NV, *";
-        BranchNot = cpu6502 ? "BVS *" : "JP V, *";
+        Branch = cpu6502 ? "BVC *" : "JP PO, *";
+        BranchNot = cpu6502 ? "BVS *" : "JP PE, *";
     }
     if (BranchNot !== "") {
         return { Eval: Eval, BranchNot: BranchNot, Branch: Branch };
@@ -1483,19 +1489,7 @@ function ParseCond(W) {
         }
         else {
             if (Register == "A")
-                Eval = "CP A," + Operand;
-            else if (Register == "B")
-                Eval = "CP B," + Operand;
-            else if (Register == "C")
-                Eval = "CP C," + Operand;
-            else if (Register == "D")
-                Eval = "CP D," + Operand;
-            else if (Register == "E")
-                Eval = "CP E," + Operand;
-            else if (Register == "H")
-                Eval = "CP H," + Operand;
-            else if (Register == "L")
-                Eval = "CP L," + Operand;
+                Eval = "CP " + Operand;
             /*
             else
             {

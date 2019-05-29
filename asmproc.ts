@@ -405,28 +405,33 @@ function RemoveComments()
    let inbasic = false;
    for(let t=0; t<L.Count; t++) 
    {
-      const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
-      const Linea = L.Strings[t];      
-      const match = R.exec(Linea);
-      
-      if(match !== null) {         
-         const [all, purged, comment] = match;         
-         // special case of ; comment in BASIC START / BASIC END
-         if(IsBasicStart(purged)) {
-            inbasic = true;            
-            L.Strings[t] = purged;
-         }
-         else if(IsBasicEnd(purged)) {
-            inbasic = false;            
-            L.Strings[t] = purged;     
-         }       
+      // repeat on the same line for multiple ; 
+      while(true) {        
+         //const R = new RegExp(/(.*);(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+         const R = new RegExp(/(.*);(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);   
+         const Linea = L.Strings[t];      
+         const match = R.exec(Linea);
+         
+         if(match !== null) {         
+            const [all, purged, comment] = match;         
+            // special case of ; comment in BASIC START / BASIC END
+            if(IsBasicStart(purged)) {
+               inbasic = true;            
+               L.Strings[t] = purged;
+            }
+            else if(IsBasicEnd(purged)) {
+               inbasic = false;            
+               L.Strings[t] = purged;     
+            }       
 
-         if(!inbasic) L.Strings[t] = purged;
-      }
-      else 
-      {
-         if(IsBasicStart(Linea)) inbasic = true;
-         if(IsBasicEnd(Linea)) inbasic = false;
+            if(!inbasic) L.Strings[t] = purged;
+         }
+         else 
+         {
+            if(IsBasicStart(Linea)) inbasic = true;
+            if(IsBasicEnd(Linea)) inbasic = false;
+            break;
+         }
       }
    }   
 }
@@ -551,7 +556,8 @@ function RemoveColon()
       while(true)
       {
          const Linea = L.Strings[t];      
-         const R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+         //const R = new RegExp(/(.*):(?=(?:[^"]*"[^"]*")*[^"]*$)(.*)/gmi);   
+         const R = new RegExp(/(.*):(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);   
          const match = R.exec(Linea);
          if(match !== null) {         
             const [all, leftpart, rightpart] = match;         
@@ -1565,13 +1571,13 @@ function ParseCond(W: string)
 		Branch    = cpu6502 ? "BNE *" : "JR NZ, *";
 		BranchNot = cpu6502 ? "BEQ *" : "JR Z, *";
 	}
-	else if(W=="C=1" || W=="CARRY")
+	else if((cpu6502 && W=="C=1") || W=="CARRY")
 	{
 		Eval = "";
 		Branch    = cpu6502 ? "BCS *" : "JR C, *";
 		BranchNot = cpu6502 ? "BCC *" : "JR NC, *";
 	}
-	else if(W=="C=0" || W=="NOT CARRY")
+	else if((cpu6502 && W=="C=0") || W=="NOT CARRY")
 	{
 		Eval = "";
 		Branch    = cpu6502 ? "BCC *" : "JR NC, *";
@@ -1580,26 +1586,26 @@ function ParseCond(W: string)
 	else if(W=="NEGATIVE" || W=="SIGN" || (cpu6502 && W=="N=1") || (cpuz80 && W=="S=1")) 
 	{
 		Eval = "";
-		Branch    = cpu6502 ? "BMI *" : "JP S, *";
-		BranchNot = cpu6502 ? "BPL *" : "JP NS, *";
+		Branch    = cpu6502 ? "BMI *" : "JP M, *";
+		BranchNot = cpu6502 ? "BPL *" : "JP P, *";
 	}
 	else if(W=="NOT NEGATIVE" || W=="NOT SIGN" || (cpu6502 && W=="N=0") || (cpuz80 && W=="S=0")) 
 	{
 		Eval = "";
-		Branch    = cpu6502 ? "BPL *" : "JP NS, *";
-		BranchNot = cpu6502 ? "BMI *" : "JP S, *";
+		Branch    = cpu6502 ? "BPL *" : "JP P, *";
+		BranchNot = cpu6502 ? "BMI *" : "JP M, *";
 	}
 	else if(W=="V=1" || W=="OVERFLOW")
 	{
 		Eval = "";
-		Branch    = cpu6502 ? "BVS *" : "JP V, *";
-		BranchNot = cpu6502 ? "BVC *" : "JP NV, *";
+		Branch    = cpu6502 ? "BVS *" : "JP PE, *";
+		BranchNot = cpu6502 ? "BVC *" : "JP PO, *";
 	}
 	else if(W=="V=0" || W=="NOT OVERFLOW")
 	{
 		Eval = "";
-		Branch    = cpu6502 ? "BVC *" : "JP NV, *";
-		BranchNot = cpu6502 ? "BVS *" : "JP V, *";
+		Branch    = cpu6502 ? "BVC *" : "JP PO, *";
+		BranchNot = cpu6502 ? "BVS *" : "JP PE, *";
    }
    
    if(BranchNot !== "") 
@@ -1673,13 +1679,7 @@ function ParseCond(W: string)
       }
       else
       {
-              if(Register=="A") Eval = "CP A,"+Operand;
-         else if(Register=="B") Eval = "CP B,"+Operand;
-         else if(Register=="C") Eval = "CP C,"+Operand;
-         else if(Register=="D") Eval = "CP D,"+Operand;
-         else if(Register=="E") Eval = "CP E,"+Operand;
-         else if(Register=="H") Eval = "CP H,"+Operand;
-         else if(Register=="L") Eval = "CP L,"+Operand;
+         if(Register=="A") Eval = "CP "+Operand;              
          /*
          else
          {
@@ -1738,7 +1738,7 @@ function ParseCond(W: string)
       error(`not valid condition: ${OriginalW}`);        
    }
 
-    return { Eval, BranchNot, Branch };
+   return { Eval, BranchNot, Branch };
 }
 
 /*

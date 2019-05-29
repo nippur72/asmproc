@@ -22,8 +22,8 @@ export function BYTE(label: string, ...list: string[])
 
 export function Jump(dest: string)
 {
-   if(target.cpu6502) return `JMP ${dest}`;
-   else               return `JP ${dest}`;
+   if(target.cpu6502) return `JMP ${dest}`;   // TODO jump relative for 6502
+   else               return `JR ${dest}`;
 }
 
 export function MOD(left: string, right: string)

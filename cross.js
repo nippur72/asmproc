@@ -26,9 +26,9 @@ function BYTE(label) {
 exports.BYTE = BYTE;
 function Jump(dest) {
     if (exports.target.cpu6502)
-        return "JMP " + dest;
+        return "JMP " + dest; // TODO jump relative for 6502
     else
-        return "JP " + dest;
+        return "JR " + dest;
 }
 exports.Jump = Jump;
 function MOD(left, right) {
