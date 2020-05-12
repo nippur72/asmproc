@@ -236,3 +236,101 @@ macro fneg
    jsr $dFB4
 end macro	
 	
+
+/*
+LDA #<CONST_1R
+LDY #>CONST_1R
+JSR REALFAC
+LDA #<VAR_Z
+LDY #>VAR_Z
+JSR CMPFAC
+BNE SKIP
+16 bytes
+Z=?
+*/
+
+// compare for equality floats in VARA e VARB   
+
+lda VARA
+bne diff
+lda VARB
+beq equals
+;23
+
+diff:
+ldx #4
+loop:
+  lda VARA, x
+  cmp VARB, x
+  bne skip
+  dex
+bpl loop
+equals:
+...
+skip:
+...
+;13
+// compare VARA < VARB
+IF A = 0 THEN
+   IF B = 0 THEN goto false ELSE RETURN B > 0
+END IF
+
+IF SIGN(A)=SIGN(B) THEN
+   cmp A.exp, B.exp
+   BCC true 
+
+ELSE
+   return VARA IS NEGATIVE
+END IF
+
+/*
+This is a suggestion for improving the case
+```
+IF B=C THEN
+```
+when `B` and `C` are real variables or constants (no expression). It's a very specific case, but occurs quite often in BASIC programs, so optimizing it might lead to a speed improvement.
+
+The rationale is that the variables can be compared directly without passing from the `FAC`.
+
+Currently:
+```
+LDA #<VAR_B
+LDY #>VAR_B
+JSR REALFAC
+LDA #<VAR_C
+LDY #>VAR_C
+JSR CMPFAC
+BNE SKIP
+; 16 bytes long
+```
+
+Suggested:
+```
+lda VAR_B
+bne diff
+lda VAR_C
+beq equals
+diff:
+ldx #4
+loop:
+  lda VAR_B, x
+  cmp VAR_C, x
+  bne skip
+  dex
+bpl loop
+equals:
+...
+skip:
+...
+; 23 bytes 
+```
+It's 7 bytes longer but much faster. And if you omit handling the case `0=0` at the start of the routine (the stuff before `diff:`) it is even shorter (13 bytes). 
+
+I am not sure the check for `0=0` can be avoided, it depends on how the number `0` is stored as a real number. If it's 80
+*/
+
+
+
+
+
+

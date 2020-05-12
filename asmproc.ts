@@ -388,7 +388,7 @@ function RemoveComments()
         }
     }
     L.SetText(Whole);
-
+    
    // remove // comments   
    for(let t=0; t<L.Count; t++) 
    {
@@ -400,7 +400,7 @@ function RemoveComments()
          L.Strings[t] = purged;     
       }
    }
-
+   
    // remove ; comments   
    let inbasic = false;
    for(let t=0; t<L.Count; t++) 
@@ -425,6 +425,7 @@ function RemoveComments()
             }       
 
             if(!inbasic) L.Strings[t] = purged;
+            else break;
          }
          else 
          {
@@ -670,7 +671,7 @@ function IsReservedKeywords(Linea: string, nl: number): string|undefined
 function RemoveCommentInclude()
 {
    for(;;)
-   {
+   {      
       RemoveComments();
       RemoveIfDefIncludeSingle();
       let hasinclude = ResolveInclude();
@@ -711,9 +712,9 @@ function RemoveIfDefSingle()
 function ProcessFile()
 {
    let t;
-
+   
    RemoveCommentInclude();
-
+   
    // remove \r new lines and tabs
    L.SetText(L.Text().replace(/\r/g, ""));
    L.SetText(L.Text().replace(/\t/g, "   "));
@@ -733,7 +734,7 @@ function ProcessFile()
 
    MakeAllUpperCase();
    
-   RemoveIfDefSingle();
+   RemoveIfDefSingle();   
 
    // change § into newlines (needed for DASM IF-THENs)   
    L.SetText(L.Text().replace(/§/g, "\n"));

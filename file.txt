@@ -1,10 +1,1 @@
-
-   lda #12  
-
-  basic start
-   10 PRINT
-   20 GOTO 10
-basic end
-
-   lda #12
-lda #12
+lda 3*4+1

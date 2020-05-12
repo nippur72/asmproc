@@ -1,6 +1,6 @@
 {
   "name": "asmproc",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "",
   "main": "asmproc.js",
   "bin": {
@@ -24,9 +24,9 @@
     "pegjs": "^0.10.0"
   },
   "devDependencies": {
+    "@types/node": "^13.13.5",
     "@types/command-line-args": "^5.0.0",
     "@types/nearley": "^2.11.0",
-    "@types/node": "^10.12.21",
     "@types/pegjs": "^0.10.1",
     "pegjs-backtrace": "^0.1.2"
   }

@@ -1,4 +1,11 @@
 "use strict";
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -63,46 +70,46 @@ function visittree(node, arg) {
     else if (node.type === "*") {
         var arg1part = visittree(node.arg1, 1);
         var arg2part = visittree(node.arg2, 2);
-        out = arg1part.concat(arg2part);
+        out = __spreadArrays(arg1part, arg2part);
         if (!isterminal(node.arg1))
-            out = out.concat([{ type: "POPFAC" }]);
+            out = __spreadArrays(out, [{ type: "POPFAC" }]);
         if (!isterminal(node.arg2))
-            out = out.concat([{ type: "POPAFAC" }]);
-        out = out.concat([{ type: "FMUL" }]);
-        out = out.concat([{ type: "FPUSH" }]);
+            out = __spreadArrays(out, [{ type: "POPAFAC" }]);
+        out = __spreadArrays(out, [{ type: "FMUL" }]);
+        out = __spreadArrays(out, [{ type: "FPUSH" }]);
     }
     else if (node.type === "/") {
         var arg1part = visittree(node.arg1, 1);
         var arg2part = visittree(node.arg2, 2);
-        out = arg1part.concat(arg2part);
+        out = __spreadArrays(arg1part, arg2part);
         if (!isterminal(node.arg1))
-            out = out.concat([{ type: "POPFAC" }]);
+            out = __spreadArrays(out, [{ type: "POPFAC" }]);
         if (!isterminal(node.arg2))
-            out = out.concat([{ type: "POPAFAC" }]);
-        out = out.concat([{ type: "FDIV" }]);
-        out = out.concat([{ type: "FPUSH" }]);
+            out = __spreadArrays(out, [{ type: "POPAFAC" }]);
+        out = __spreadArrays(out, [{ type: "FDIV" }]);
+        out = __spreadArrays(out, [{ type: "FPUSH" }]);
     }
     else if (node.type === "+") {
         var arg1part = visittree(node.arg1, 1);
         var arg2part = visittree(node.arg2, 2);
-        out = arg1part.concat(arg2part);
+        out = __spreadArrays(arg1part, arg2part);
         if (!isterminal(node.arg1))
-            out = out.concat([{ type: "POPFAC" }]);
+            out = __spreadArrays(out, [{ type: "POPFAC" }]);
         if (!isterminal(node.arg2))
-            out = out.concat([{ type: "POPAFAC" }]);
-        out = out.concat([{ type: "FADD" }]);
-        out = out.concat([{ type: "FPUSH" }]);
+            out = __spreadArrays(out, [{ type: "POPAFAC" }]);
+        out = __spreadArrays(out, [{ type: "FADD" }]);
+        out = __spreadArrays(out, [{ type: "FPUSH" }]);
     }
     else if (node.type === "-") {
         var arg1part = visittree(node.arg1, 1);
         var arg2part = visittree(node.arg2, 2);
-        out = arg1part.concat(arg2part);
+        out = __spreadArrays(arg1part, arg2part);
         if (!isterminal(node.arg1))
-            out = out.concat([{ type: "POPFAC" }]);
+            out = __spreadArrays(out, [{ type: "POPFAC" }]);
         if (!isterminal(node.arg2))
-            out = out.concat([{ type: "POPAFAC" }]);
-        out = out.concat([{ type: "FSUB" }]);
-        out = out.concat([{ type: "FPUSH" }]);
+            out = __spreadArrays(out, [{ type: "POPAFAC" }]);
+        out = __spreadArrays(out, [{ type: "FSUB" }]);
+        out = __spreadArrays(out, [{ type: "FPUSH" }]);
     }
     else if (node.type === "sin") {
         /*
@@ -113,11 +120,11 @@ function visittree(node, arg) {
         out = arg1part + poppart + "fsin\nfpush\n";
         */
         var arg1part = visittree(node.arg, 1);
-        out = arg1part.slice();
+        out = __spreadArrays(arg1part);
         if (!isterminal(node.arg))
-            out = out.concat([{ type: "POPFAC" }]);
-        out = out.concat([{ type: "FSIN" }]);
-        out = out.concat([{ type: "FPUSH" }]);
+            out = __spreadArrays(out, [{ type: "POPFAC" }]);
+        out = __spreadArrays(out, [{ type: "FSIN" }]);
+        out = __spreadArrays(out, [{ type: "FPUSH" }]);
     }
     else if (node.type === "pi") {
         if (arg === 1)

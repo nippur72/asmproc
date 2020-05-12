@@ -1,106 +1,207 @@
 
-basic_row_0:  BYTE [basic_row_1%256],[basic_row_1/256],[10%256],[10/256],153,32,34,72,69,76,76,79,34,58,153,32,34,87,79,82,76,68,34,0
-
-   20 GOTO 10
-BASIC END
+basic_row_0:  byte [basic_row_1%256],[basic_row_1/256],[10%256],[10/256],153,32,34,67,73,65,79,34,0
+basic_row_1:  byte [basic_row_2%256],[basic_row_2/256],[20%256],[20/256],158,32,[[[MAIN%40]-4]/4+$30],[[[MAIN%30]-3]/3+$30],[[[MAIN%20]-2]/2+$30],[[[MAIN%10]-1]/1+$30],58,128,58,58,77,65,73,78,58,58,82,84,83,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,58,0
 
 
-BITMAP -------X
-BITMAP ------X-
-BITMAP -----X--
-BITMAP ----X---
-BITMAP ---X----
-BITMAP --X-----
-BITMAP -X------
-BITMAP X-------
-
-FLOAT 3.14
-
-FLOAT 0
-
-FLOAT 1
-
-#IFDEF A
-   TEXT_IN_IFDEF
-#ENDIF
 
 
-IF CARRY THEN
-   THEN_BRANCH
-END IF
-
-IF CARRY THEN
-   THEN_BRANCH
-ELSE
-   ELSE_BRANCH
-END IF
-
-IF CARRY THEN GOTO SOMELABEL
-
-IF CARRY THEN LDA $03
-
-IF CARRY THEN SOMELABEL
-
-; ===== SUB ... END SUB ====
-
-SUB MYSUB()
-   TEXT
-   IF CARRY THEN EXIT SUB
-   IF CARRY THEN RTS
-   TEXT
-   EXIT SUB
-   TEXT
-END SUB
-
-; ===== FOR ... NEXT ====
-
-FOR A=#0 TO #3 STEP #1
-   TEXT
-   IF CARRY THEN EXIT FOR
-   EXIT FOR
-NEXT
-
-FOR $03=#1 TO #4 STEP #2
-   TEXT
-NEXT
-
-; =======================
-
-WHILE CARRY
-   TEXT
-   IF CARRY THEN EXIT WHILE
-   EXIT WHILE
-WEND
-
-TEXT
-REPEAT_75_START:
-   ISTR1
-   ISTR2
-   IF A>#1 THEN GOTO REPEAT_75_END
-   JMP REPEAT_75_END
-	BNE REPEAT_75_START§REPEAT_75_END:§
-TEXT
-
-REPEAT_83_START:
-   TEXT
-REPEAT_85_START:
-      ISTR1      
-	CMP #1§	BCC REPEAT_85_START§REPEAT_85_END:§
-   TEXT
-	BNE REPEAT_83_START§REPEAT_83_END:§
 
 
-DO_92_START:
-   TEXT
-   IF CARRY THEN GOTO DO_92_END
-   JMP DO_92_END
-	BCC DO_92_START§DO_92_END:§
 
-DO_98_START:
-   TEXT
-	BCS DO_98_START§DO_98_END:§
 
-DO_102_START:
-   TEXT
-	BCS DO_102_START§DO_102_END:§
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

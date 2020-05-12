@@ -1,0 +1,12 @@
+lda (55*2)+pippo(1) && 2
+byte $0a,$0b
+word $ff
+defw casa,cane,gatto
+
+lda #54, y
+
+dim xx as byte
+dim yy as word init $55+1
+dim zz as byte at $d021
+
+const z=3

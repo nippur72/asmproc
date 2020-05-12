@@ -7,7 +7,7 @@
   }
   
   function program(items) { return { type: "program", items }; }
-  function include(filename) { return { type: "include", filename }; }
+  function include(filename, binary) { return { type: "include", filename, binary }; }
   function pragma(keyword, expr,items) { return { type: "pragma", keyword, expr, items }; }
   function constnode(id,expr) { return { type: "const", id, expr }; }
   function assignment(id,expr) { return { type: "assignment", id, expr }; }
@@ -29,18 +29,18 @@
   function eqcond(leftvalue, op, value) { return { type: "eqcond", leftvalue, op, value  }; }
   function immediateExpression(expr) { return { type: "immediate", expr }; }
   function instructions(list) { return { type: "instructions", list } }
-  function instruction(opcode, args) { return { type: "istruction", opcode, args }; }
+  function instruction(opcode, args) { return { type: "instruction", opcode, args }; }
   function opcode(opcode) { return { type: "opcode", opcode }; }
   function argumentsnode(args) { return { type: "arguments", args }; }
-  function label(name) { return { type: "label", name}; }
-  function identifier(name) { return { type: "identifier", name}; }
-  function byte(bytetype, list) { return { type: "byte", bytetype, list }; }
+  function label(name) { return { type: "label", name}; }  
+  function bytedef(bytetype, list) { return { type: "byte", bytetype, list: list }; }
+  function dim(id, size, spec) { return { type: "dim", id, size, spec }; }
 }
 
 // =====================================================================================
 
 program 
-  = g:(global_item)*               { return program(g.filter(e=>e!==null)) }
+  = g:(global_item)*               { if(g===undefined) return program([]); else return program(g.filter(e=>e!==null).map(e=>e)) }
 
 global_item 
   = basic
@@ -54,8 +54,7 @@ items = item*
 item = emptyspace
   / pragmaif  
   / emptyline
-  / label
-  / istructions eol
+  / label  
   / if
   / doloop
   / repeat
@@ -66,8 +65,10 @@ item = emptyspace
   / float
   / const
   / exit
-  / byte
+  / bytedef
   / assignment
+  / dim
+  / i:istructions eol { return i }
 
 DO = "do"i
 LOOP = "loop"i
@@ -93,24 +94,27 @@ BASIC_END = ("basic"i __ "end"i / "end"i __ "basic"i)
 
 INCLUDE = "include"i
 
+BYTE = "byte"i / "word"i / "defb"i / "defw"i   { return text() }
+
 keywords = DO / LOOP /
            REPEAT / UNTIL /
            WHILE / WEND /
            FOR / NEXT /
            END_SUB / 
            END_MACRO / 
-           IF / ELSE /END_IF
+           IF / ELSE / END_IF /
+           BYTE
 
 // ===============================================
 
-include = INCLUDE __ filename:Expression eol     { return include(filename); }
+include = INCLUDE binary:( __ "binary"i )? __ filename:Expression eol     { return include(filename, binary!==null); }
 
-pragmaif = keyword:('#ifdef'i/'#if'i/'#ifndef'i) __ expr:Expression __ THEN __ items:istructions    { return pragma(keyword,expr,items) }
-         / keyword:('#ifdef'i/'#if'i/'#ifndef'i) __ expr:Expression eol _ items:items _ '#endif'i eol  { return pragma(keyword,expr,items) }
+pragmaif = keyword:('#ifdef'i/'#ifndef'i/'#if'i) __ expr:Expression __ THEN __ items:istructions       { return pragma(keyword,expr,items) }
+         / keyword:('#ifdef'i/'#ifndef'i/'#if'i) __ expr:Expression eol _ items:items _ '#end'i_'if'i eol  { return pragma(keyword,expr,items) }
          
 // ===============================================
 
-assignment = id:id _ "=" _ expr:Expression eol        { return assignment(id, expr) }
+assignment = !keywords id:id _ "=" _ expr:Expression eol        { return assignment(id, expr) }
 
 if 
   = ifsingle
@@ -166,6 +170,14 @@ float = "float"i __ values:Expressions eol    { return float(values) }
 
 const = "const"i __ id:id _ "=" _ expr:Expression eol       { return constnode(id,expr); }
 
+dim = "dim"i __ id:id __ "as"i __ size:("byte"i / "word"i / "integer"i / "char"i) 
+         spec:(
+            absolute:(__ "at" __ expr:Expression     { return {absolute: expr} }) /
+            zeropage:(__ "in" __ "zero"_"page"       { return {zeropage: true} }) /
+            init:    (__ "init" __ expr:Expression   { return {init: expr}     })?
+         )
+         { return dim(id, size, {...spec}) }
+
 // ===============================================
 
 Cond = using:(
@@ -182,20 +194,20 @@ Cond = using:(
        ) 
        { return { type: "cond", using, signed, cond } }
 
-flagcond =  "Z"i _ "=" _ "1"   { return flagcond("z=1") } / 
-            "ZERO"i            { return flagcond("z=1") } / 
-            "EQUAL"i           { return flagcond("z=1") } /
-            "Z"i _ "=" _ "0"   { return flagcond("z=0") } /
-            "NOT"i __ "ZERO"i  { return flagcond("z=0") } /
-            "NOT"i __ "EQUAL"i { return flagcond("z=0") } /
-            "C"i _ "=" _ "1"   { return flagcond("c=1") } /
-            "CARRY"i           { return flagcond("c=1") } /
-            "C"i _ "=" _ "0"   { return flagcond("c=0") } /
-            "NOT"i __ "CARRY"i { return flagcond("c=0") } /
-            "NEGATIVE"i        { return flagcond("n=1") } / 
-            "SIGN"i            { return flagcond("n=1") } / 
-            "N"i _ "=" _ "1"   { return flagcond("n=1") } / 
-            "S"i _ "=" _ "1"   { return flagcond("n=1") } / 
+flagcond =  "Z"i _ "=" _ "1"      { return flagcond("z=1") } / 
+            "ZERO"i               { return flagcond("z=1") } / 
+            "EQUAL"i              { return flagcond("z=1") } /
+            "Z"i _ "=" _ "0"      { return flagcond("z=0") } /
+            "NOT"i __ "ZERO"i     { return flagcond("z=0") } /
+            "NOT"i __ "EQUAL"i    { return flagcond("z=0") } /
+            "C"i _ "=" _ "1"      { return flagcond("c=1") } /
+            "CARRY"i              { return flagcond("c=1") } /
+            "C"i _ "=" _ "0"      { return flagcond("c=0") } /
+            "NOT"i __ "CARRY"i    { return flagcond("c=0") } /
+            "NEGATIVE"i           { return flagcond("n=1") } / 
+            "SIGN"i               { return flagcond("n=1") } / 
+            "N"i _ "=" _ "1"      { return flagcond("n=1") } / 
+            "S"i _ "=" _ "1"      { return flagcond("n=1") } / 
             "NOT"i __ "NEGATIVE"i { return flagcond("n=0") } / 
             "NOT"i _ "SIGN"i      { return flagcond("n=0") } / 
             "N"i _ "=" _ "0"      { return flagcond("n=0") } / 
@@ -227,19 +239,20 @@ opExpression = ( Expression / "#" expr:Expression { return immediateExpression(e
 // ===============================================
 
 istructions = head:istruction tail:(_":"_ istruction)*      
-{ if(tail.length==0) return head;
+{ 
+  if(tail.length==0) return head;
   const list = [head, ...(tail.map(e=>e[3]))];
   return instructions(list);
 }
 
 istruction 
-  = !keywords opcode:opcode args:(__ arguments)?      { return instruction(opcode, args == null ? args : args[1]); }
+  = !keywords opcode:opcode args:(__ arguments)?      { return instruction(opcode, args == null ? null : args[1]); }
 
 opcode 
   = id       { return opcode(text()) }
   
 arguments 
-  = a:arg b:(_ "," _ arg)*   { return argumentsnode([a, ...(b.map(e=>e[3]))]); }
+  = a:arg b:(_ "," _ arg)*   { return [a, ...(b.map(e=>e[3]))]; }
 
 arg 
   = opExpression
@@ -255,27 +268,23 @@ label
   = name:id ":" eol     { return label(name.id) }
   
 id = 
-  [_a-zA-Z]+ [_a-zA-Z0-9]* { return identifier(text()) }
+  [_a-zA-Z]+ [_a-zA-Z0-9]* { return text() }
 
 _ "whitespace"
-  = [ \t]*
+  = [ \t]*                           { return null }
 
 __ "space"
-  = [ \t]+
+  = [ \t]+                           { return null }
 
 eol
-  = _ SingleLineComment? (":"/[\n]) 
+  = _ SingleLineComment? (":"/[\n])  { return null }
 
 eolnocolon
-  = _ SingleLineComment? [\n]
+  = _ SingleLineComment? [\n]        { return null }
 
 // ===============================================
 
-byte = bytetype:("byte"i / "word"i / "defb"i / "defw"i ) list:Expressions        { return byte(bytetype, list) }
-
-Expressions = head:Expression tail:(_","_ Expression)*
-{ if(tail.length==0) return head;
-  return { type: "expressions", list: [head, ...(tail.map(e=>e[3]))] } }
+bytedef = bytetype:BYTE __ list:Expressions  { return bytedef(bytetype, list) }
 
 // ===============================================
 
@@ -328,18 +337,24 @@ Level3 = left:Level2 right:(_ op:('*' / '/' / '%' / "MOD") _ right:Level2 { retu
 
 Level2 = '-' _ expr:Level1   { return { type: "unaryminus", expr } } 
        / '+' _ Level1        { return { type: "unaryplus", expr } }  
+       / '!' _ Level1        { return { type: "not", expr } }  
+       / '~' _ Level1        { return { type: "bitwisenot", expr } }  
        / Level1
-       
+
 Level1 = id:id props:('.' property:Expression)+  { return { type: "dot", id, props } }
-       / id:id args:( _ '(' args:Expressions ')' { return args })?  { return { type: "id", id, args } }
+       / id:id args:( _ '(' args:Expressions ')' { return args })?  { return { type: "id", id, args: args === null ? undefined : args } }
        / Primary
-         
+
 Primary = '(' _ expr:Expression _ ')'   { return { type: "()", expr } }
-        / '[' _ expr:Expression _ ']'   { return { type: "[]", expr } }        
+        / '[' _ expr:Expression _ ']'   { return { type: "[]", expr } }
         / num:Integer                   { return { type: "integer", num } }
-        / num:HexNumber                 { return { type: "integer", num } }
-        / num:BinNumber                 { return { type: "integer", num } }
-        / str:String                    { return { type: "string", str } }                
+        / num:HexNumber                 { return { type: "integer", num: parseInt(num, 16) } }
+        / num:BinNumber                 { return { type: "integer", num: parseInt(num, 2) } }
+        / str:String                    { return { type: "string", str } }
+
+Expressions = head:Expression tail:(_","_ Expression)*
+{ if(tail.length==0) return [ head ];
+  else return [head, ...(tail.map(e=>e[3]))] } 
 
 // =====================================================================================
 
@@ -358,7 +373,7 @@ HexPrefix = "&h"i / "$" / "0x"i
 HexSuffix = "h"i
 
 BinNumber = BinPrefix number:[0-1]+ { return number.join(""); }
-BinPrefix = "0b"i
+BinPrefix = "0b"i 
 
 // =====================================================================================
 

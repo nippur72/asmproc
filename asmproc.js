@@ -1,12 +1,68 @@
 #!/usr/bin/env node
 "use strict";
+// TODO fix bug rem {}
+// TODO fix bug no build long basic line with {}
+// TODO split table word
+// TODO define function ?
+// TODO ifdef ... then include
+// TODO dim as byte/word/bytes[]/words absolute
+// TODO sintax for eliminating #0 ? 
+// TODO simulate AST parsing
+// TODO lo/hi tables
+// TODO locate and use Basic V2 variables
+// TODO ELSE IF
+// TODO --version
+// TODO macro in if single
+// TODO dim/zeropage
+// TODO bye/word in #const
+// TODO slowly convert to nearley
+// TODO peephole optimizer
+// TODO on goto
+// TODO switch case
+// TODO parse line with nearley
+// TODO zero page pool ? 
+// TODO uses/preserve/lock?
+// TODO input in sub
+// TODO conditional include
+// TODO test suite with 6502.js and Z80.js
+// TODO float compiler with nearley
+// TODO DIV, HIBYTE, LOBYTE functions
+// TODO ' hypen comments?
+// TODO "/*" comments when in quoted text
+// TODO JMP simulate BRA branch always
+// TODO self modifying code
+// TODO WHILE, LOOP, UNTIL check no condition or loop forever
+// TODO SUB nomesub = Identifier
+// TODO SUB then rts or then exit sub ?
+// TODO SUB implement RETURN
+// TODO IF THEN GOTO move into IF SINGLE
+// TODO bitmap, output as comment
+// TODO float, output as comment
+// TODO change float into cbmfloat, output as comment
+// TODO basic compact by default // preserve
+// TODO first char space in DASM?
+// TODO #define ?
+// TODO Z80 if then ret / return
+// TODO Z80 FOR
+// TODO Z80 Macro
+// TODO Z80 Condition
+// TODO macro fix literal value call
+// TODO bitmap for c64 sprites
+// TODO cc65
+// TODO basic tokenizer: {cm } as {cbm}
+// TODO basic tokenizer: ? as print
+// TODO basic tokenizer: c64 colors
+// TODO basic tokenizer: alternate names (wht -> white)
+// TODO basic tokenizer: {rev shift} ?
+// TODO basic tokenizer: {cbm } shortcuts
+// TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -17,6 +73,56 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+TO DO
+=====
+
+- loop forever
+- dim
+- float
+- float expr compiler
+- line numbers
+- else if
+- then statement con endif automatico
+- (...) in sub
+- inline sub / call sub
+- inline sub / call
+- controllare operatori signed <,>,
+*/
+/*
+DASM
+   include
+   IF ELSE ENDIF IFDEF IFNDEF
+   byte
+   word
+   equ (define)
+   parens: []
+
+ca65
+   .include
+   .if .else .endif .ifdef .ifndef
+   .byte
+   .word
+   .define
+   parens: ()
+
+Z80ASM
+   include
+   IF ELSE ENDIF IFDEF IFNDEF
+   defb
+   defw
+   define
+   defl, defm, defs size, fill
+   parens: ?
+
+6502        Z80
+===========================
+C           C    carry
+V           V    overflow
+N           S    negative / sign
+Z           Z    zero
+
+*/
 var fs_1 = __importDefault(require("fs"));
 var path_1 = __importDefault(require("path"));
 var command_line_args_1 = __importDefault(require("command-line-args"));
@@ -250,6 +356,7 @@ function RemoveComments() {
             var R = new RegExp(/(.*);(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);
             var Linea = L.Strings[t];
             var match = R.exec(Linea);
+            console.log(match);
             if (match !== null) {
                 var all = match[0], purged = match[1], comment = match[2];
                 // special case of ; comment in BASIC START / BASIC END
@@ -263,6 +370,8 @@ function RemoveComments() {
                 }
                 if (!inbasic)
                     L.Strings[t] = purged;
+                else
+                    break;
             }
             else {
                 if (basic_1.IsBasicStart(Linea))
