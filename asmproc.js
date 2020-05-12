@@ -356,7 +356,6 @@ function RemoveComments() {
             var R = new RegExp(/(.*);(?=(?:[^"']*["'][^"']*["'])*[^"']*$)(.*)/gmi);
             var Linea = L.Strings[t];
             var match = R.exec(Linea);
-            console.log(match);
             if (match !== null) {
                 var all = match[0], purged = match[1], comment = match[2];
                 // special case of ; comment in BASIC START / BASIC END
