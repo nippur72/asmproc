@@ -218,11 +218,12 @@ function MatchQuote(Linea: string, inquote: boolean, inrem: boolean)
 function MatchRem(Linea: string, inquote: boolean, inrem: boolean)
 {
    // within rem, matches to the end of line
+   // TODO match {}
    if(inrem)
    {
       // console.log("we are in rem");
       let codes = Object.keys(Ascii);
-      for(let j=0;j<=codes.length;j++)
+      for(let j=0;j<codes.length;j++)
       {
          let code = codes[j];
          let t = Ascii[code];
@@ -302,11 +303,15 @@ function TranslateBasic(Linea: string): string
       }
       else if(inrem) {
          // inrem (or data)
-         const match = MatchRem(Linea, inquote, inrem);
+         const match = MatchSymbol(Linea, inquote, inrem);
          if(!advance(match))
          {
-            console.log(`unrecognized rem/data text token: ${Linea}`);
-            error("unrecognized rem/data text token");
+            const match = MatchRem(Linea, inquote, inrem);
+            if(!advance(match))
+            {
+               console.log(`unrecognized rem/data text token: ${Linea}`);
+               error("unrecognized rem/data text token");
+            }
          }
       }      
    }
