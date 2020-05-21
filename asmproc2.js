@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 "use strict";
+// this is an attempt to convert all the grammar in nearley
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };

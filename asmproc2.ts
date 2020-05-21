@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// this is an attempt to convert all the grammar in nearley
+
 import fs from "fs";
 import commandLineArgs, { OptionDefinition } from 'command-line-args';
 
