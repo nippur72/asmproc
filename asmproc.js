@@ -49,12 +49,14 @@
 // TODO macro fix literal value call
 // TODO bitmap for c64 sprites
 // TODO cc65
+// TODO if then macro on single line
 // TODO basic tokenizer: {cm } as {cbm}
 // TODO basic tokenizer: ? as print
 // TODO basic tokenizer: c64 colors
 // TODO basic tokenizer: alternate names (wht -> white)
 // TODO basic tokenizer: {rev shift} ?
 // TODO basic tokenizer: {cbm } shortcuts
+// TODO basic tokenizer: lowercase/uppercase in strings
 // TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {

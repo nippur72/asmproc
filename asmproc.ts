@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// TODO fix bug rem {}
 // TODO fix bug no build long basic line with {}
 // TODO split table word
 // TODO define function ?
@@ -49,6 +48,7 @@
 // TODO macro fix literal value call
 // TODO bitmap for c64 sprites
 // TODO cc65
+// TODO if then macro on single line
 // TODO basic tokenizer: {cm } as {cbm}
 // TODO basic tokenizer: ? as print
 // TODO basic tokenizer: c64 colors
