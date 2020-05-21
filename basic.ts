@@ -43,6 +43,7 @@ export function IsBasic(L: TStringList, Linea: string, nl: number): boolean
          }
          else
          {
+            // append with ":" a line without line number
             if(si==-1)
             {
                error(`BASIC line continuing from no line number in line ${t}`);
@@ -173,7 +174,7 @@ function MatchSymbol(Linea: string, inquote: boolean, inrem: boolean)
          let quarta_cifra  = cifra(Symbol, 3);
          let quinta_cifra  = cifra(Symbol, 4);
 
-         let Matched = `${quarta_cifra},${terza_cifra},${seconda_cifra},${prima_cifra},`;
+         let Matched = `${quinta_cifra},${quarta_cifra},${terza_cifra},${seconda_cifra},${prima_cifra},`;
 
          return { Matched, Linea, inquote, inrem };
       }
