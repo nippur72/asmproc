@@ -19,19 +19,20 @@ function IsBasicEnd(Linea) {
 }
 exports.IsBasicEnd = IsBasicEnd;
 function IsBasic(L, Linea, nl) {
-    Linea = utils_1.UpperCase(utils_1.Trim(Linea)) + " ";
+    Linea = utils_1.UpperCase(utils_1.Trim(Linea) + " ");
     var StuffLine;
     var si = -1;
     // compact lines with no no line numbers into the previous numbered line
     if (IsBasicStart(Linea)) {
         for (var t = nl + 1; t < L.Count; t++) {
-            var Linx = utils_1.UpperCase(utils_1.Trim(L.Strings[t]));
+            var Linx = utils_1.Trim(L.Strings[t]);
             if (IsBasicEnd(Linx))
                 break;
             if (StartWithNumber(Linx)) {
                 si = t;
             }
             else {
+                // append with ":" a line without line number
                 if (si == -1) {
                     asmproc_1.error("BASIC line continuing from no line number in line " + t);
                     break;
@@ -79,7 +80,7 @@ function MatchToken(Linea, inquote, inrem) {
         var keyword = keywords[t];
         var index = TokensKeywords[keyword];
         var l = keyword.Length();
-        if (l > 0 && Linea.SubString(1, l) === keyword) {
+        if (l > 0 && Linea.SubString(1, l).toUpperCase() === keyword) {
             // console.log(`matched token: ${Tokens[t]}`);
             Linea = Linea.SubString(l + 1);
             var Matched = index + ",";
@@ -98,7 +99,7 @@ function MatchTextToken(Linea, inquote, inrem) {
         var text = keys[t];
         var index = TokensText[text];
         var l = text.Length();
-        if (l > 0 && Linea.SubString(1, l) === text) {
+        if (l > 0 && Linea.SubString(1, l).toUpperCase() === text) {
             // console.log(`matched text: ${Tokens[t]}`);
             Linea = Linea.SubString(l + 1);
             var Matched = "";
@@ -136,7 +137,7 @@ function MatchSymbol(Linea, inquote, inrem) {
             var terza_cifra = cifra(Symbol_1, 2);
             var quarta_cifra = cifra(Symbol_1, 3);
             var quinta_cifra = cifra(Symbol_1, 4);
-            var Matched = quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
+            var Matched = quinta_cifra + "," + quarta_cifra + "," + terza_cifra + "," + seconda_cifra + "," + prima_cifra + ",";
             return { Matched: Matched, Linea: Linea, inquote: inquote, inrem: inrem };
         }
     }
@@ -149,7 +150,10 @@ function MatchQuote(Linea, inquote, inrem) {
             var code = codes[j];
             var t = Ascii[code];
             var l = code.Length();
-            if (l > 0 && Linea.SubString(1, l) == utils_1.UpperCase(code)) {
+            if (l > 0 &&
+                ((l == 1 && Linea.SubString(1, l) === code)
+                    ||
+                        (l > 1 && Linea.SubString(1, l).toUpperCase() === utils_1.UpperCase(code)))) {
                 // console.log(`matched string text: ${Ascii[t]}`);
                 Linea = Linea.SubString(l + 1);
                 var Matched = t + ",";
@@ -163,14 +167,15 @@ function MatchQuote(Linea, inquote, inrem) {
 }
 function MatchRem(Linea, inquote, inrem) {
     // within rem, matches to the end of line
+    // TODO match {}
     if (inrem) {
         // console.log("we are in rem");
         var codes = Object.keys(Ascii);
-        for (var j = 0; j <= codes.length; j++) {
+        for (var j = 0; j < codes.length; j++) {
             var code = codes[j];
             var t = Ascii[code];
             var l = code.Length();
-            if (l > 0 && Linea.SubString(1, l) == utils_1.UpperCase(code)) {
+            if (l > 0 && Linea.SubString(1, l).toUpperCase() == utils_1.UpperCase(code)) {
                 // console.log(`matched REM text: ${Ascii[t]}`);
                 Linea = Linea.SubString(l + 1);
                 var Matched = t + ",";
@@ -194,7 +199,6 @@ function TranslateBasic(Linea) {
     // skip empty lines
     if (utils_1.Trim(Linea) == "")
         return "";
-    Linea = utils_1.UpperCase(Linea); // TODO remove uppercase
     var G = utils_1.GetToken(Linea, " ");
     Linea = G.Rest;
     var LineNumber = utils_1.Trim(G.Token);
@@ -231,10 +235,13 @@ function TranslateBasic(Linea) {
         }
         else if (inrem) {
             // inrem (or data)
-            var match = MatchRem(Linea, inquote, inrem);
+            var match = MatchSymbol(Linea, inquote, inrem);
             if (!advance(match)) {
-                console.log("unrecognized rem/data text token: " + Linea);
-                asmproc_1.error("unrecognized rem/data text token");
+                var match_3 = MatchRem(Linea, inquote, inrem);
+                if (!advance(match_3)) {
+                    console.log("unrecognized rem/data text token: " + Linea);
+                    asmproc_1.error("unrecognized rem/data text token");
+                }
             }
         }
     }
@@ -597,36 +604,62 @@ function InitTokens() {
     Ascii[">"] = 62;
     Ascii["?"] = 63;
     Ascii["@"] = 64;
-    Ascii["A"] = 65;
-    Ascii["B"] = 66;
-    Ascii["C"] = 67;
-    Ascii["D"] = 68;
-    Ascii["E"] = 69;
-    Ascii["F"] = 70;
-    Ascii["G"] = 71;
-    Ascii["H"] = 72;
-    Ascii["I"] = 73;
-    Ascii["J"] = 74;
-    Ascii["K"] = 75;
-    Ascii["L"] = 76;
-    Ascii["M"] = 77;
-    Ascii["N"] = 78;
-    Ascii["O"] = 79;
-    Ascii["P"] = 80;
-    Ascii["Q"] = 81;
-    Ascii["R"] = 82;
-    Ascii["S"] = 83;
-    Ascii["T"] = 84;
-    Ascii["U"] = 85;
-    Ascii["V"] = 86;
-    Ascii["W"] = 87;
-    Ascii["X"] = 88;
-    Ascii["Y"] = 89;
-    Ascii["Z"] = 90;
+    Ascii["a"] = 65;
+    Ascii["b"] = 66;
+    Ascii["c"] = 67;
+    Ascii["d"] = 68;
+    Ascii["e"] = 69;
+    Ascii["f"] = 70;
+    Ascii["g"] = 71;
+    Ascii["h"] = 72;
+    Ascii["i"] = 73;
+    Ascii["j"] = 74;
+    Ascii["k"] = 75;
+    Ascii["l"] = 76;
+    Ascii["m"] = 77;
+    Ascii["n"] = 78;
+    Ascii["o"] = 79;
+    Ascii["p"] = 80;
+    Ascii["q"] = 81;
+    Ascii["r"] = 82;
+    Ascii["s"] = 83;
+    Ascii["t"] = 84;
+    Ascii["u"] = 85;
+    Ascii["v"] = 86;
+    Ascii["w"] = 87;
+    Ascii["x"] = 88;
+    Ascii["y"] = 89;
+    Ascii["z"] = 90;
     Ascii["["] = 91;
     Ascii["£"] = 92;
     Ascii["]"] = 93;
     Ascii["^"] = 94;
+    Ascii["A"] = 97;
+    Ascii["B"] = 98;
+    Ascii["C"] = 99;
+    Ascii["D"] = 100;
+    Ascii["E"] = 101;
+    Ascii["F"] = 102;
+    Ascii["G"] = 103;
+    Ascii["H"] = 104;
+    Ascii["I"] = 105;
+    Ascii["J"] = 106;
+    Ascii["K"] = 107;
+    Ascii["L"] = 108;
+    Ascii["M"] = 109;
+    Ascii["N"] = 110;
+    Ascii["O"] = 111;
+    Ascii["P"] = 112;
+    Ascii["Q"] = 113;
+    Ascii["R"] = 114;
+    Ascii["S"] = 115;
+    Ascii["T"] = 116;
+    Ascii["U"] = 117;
+    Ascii["V"] = 118;
+    Ascii["W"] = 119;
+    Ascii["X"] = 120;
+    Ascii["Y"] = 121;
+    Ascii["Z"] = 122;
     Ascii["{left arrow}"] = 95;
     Ascii["{shift *}"] = 96;
     Ascii["{shift a}"] = 97;

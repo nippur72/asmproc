@@ -409,8 +409,17 @@ Allows to enter BASIC programs directly from the assembler source.
 If you put machine language code after the basic code, it will be hidden to LIST command. 
 
 Enclosing an assembler symbol (e.g. a label) in `"{}"` causes the corresponding 
-4-digit decimal number to be entered in the basic text as tokens. It is thus allowed 
-to basic to call assembler subroutines. 
+decimal number to be entered in the basic text as tokens. It is thus allowed
+BASIC to interact with machine code.
+
+ASCII text is converted into lowercase + uppercase PETSCII codes. If you want to
+use the uppercase + symbols PETSCII codes, write uppercase PETSCII in lowercase
+ASCII and use shift codes `{shift }`.
+
+ASCII    PETSCII l+u     PETSCII u+symbols
+-------------------------------------------
+a        a               A
+A        A               {shift a}
 
 Quoted string text can contain `{codes}` for special characters, in
 the format `{shift k}` or `{cbm k}` (substitute "k" with the actual key).
