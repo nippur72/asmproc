@@ -318,7 +318,7 @@ function TranslateBasic(Linea: string): string
 
    Compr = Compr + "0";
 
-   let Label = `basic_row_${basic_row}:`;
+   let Label = `basic_row_${basic_row}`;
    let NextLabel = `basic_row_${basic_row+1}`;
 
    let ReplaceTo = BYTE(Label, 

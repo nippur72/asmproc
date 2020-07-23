@@ -265,14 +265,15 @@ let AllMacros: Macro[] = [];
 
 let Ferr: string;
 
-let Dims: string[] = [];
+let Dims_at_end: string[] = [];
+let Dims_at_start: string[] = [];
 
 function emitConstDim(t: number) {
 
    L.SetText(L.Text().replace(/§/g, "\n"));
 }
 
-import { target, Jump, MOD, define } from "./cross";
+import { target, Jump, MOD, define, BYTE, WORD, BYTESPACE, WORDSPACE } from "./cross";
 import { GetParm, GetToken, Trim, UpperCase } from "./utils";
 import { IsBasicStart, IsBasic, IsBasicEnd } from "./basic";
 
@@ -585,20 +586,37 @@ function MakeAllUpperCase()
 
 function IsDim(Linea: string, nl: number): string | undefined
 {   
-   const R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+   // senza (size)
+   // const R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+
+   const R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)(\s*\((.*)\))?\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+
    const match = R.exec(Linea);
 
    if(match === null) return undefined;
 
-   const [ all, id, tipo, part, atstring, atvalue, zeropage, initstring, initvalue ] = match;   
+   const [ all, id, size, part1, tipo, part, atstring, atvalue, zeropage, initstring, initvalue ] = match;
+
+   //console.log({all, id, part1, size, tipo, part, atstring, atvalue, zeropage, initstring, initvalue});
 
    let Result = "";
+   let ival = initvalue == undefined ?  "0" : initvalue;
 
-        if(atstring !== undefined) Result = `const ${id} = ${atvalue}`;
-   else if(zeropage !== undefined) throw `not implemented`;
-   else if(initvalue !== undefined) Dims.push(`${id} ${tipo} ${initvalue}`);
-   else                             Dims.push(`${id} ${tipo} 0`);
-   
+   if(zeropage !== undefined) throw `dim at zero page not implemented`;
+
+   if(atstring !== undefined) {
+      Dims_at_start.push(define(id,atvalue));
+   }
+   else if(tipo=="BYTE" || tipo=="CHAR") {
+      if(size==undefined) Dims_at_end.push(BYTE(id,ival));
+      else                Dims_at_end.push(BYTESPACE(id,size,ival));
+   }
+   else if(tipo=="WORD" || tipo=="INTEGER") {
+      if(size==undefined) Dims_at_end.push(WORD(id,ival));
+      else                Dims_at_end.push(WORDSPACE(id,size,ival));
+   }
+   else throw `unknown type ${tipo} in dim`;
+
    return Result;
 }
 
@@ -937,8 +955,10 @@ function ProcessFile()
    L.Strings[0] = definecode + "§" + L.Strings[0];
 
    // add global variables created with DIM
-   L.Add(Dims.join("§"));      
-   Dims = [];
+   L.SetText(Dims_at_start.join("§")+"§"+L.Text());
+   L.Add(Dims_at_end.join("§"));
+   Dims_at_start = [];
+   Dims_at_end = [];
 
    // change § into newlines
    L.SetText(L.Text().replace(/§/g,"\n"));
@@ -1391,11 +1411,17 @@ function IsFOR(Linea: string,  nl: number): string | undefined
    if(Register=="X")
    {
       StartIstruction = "LDX "+StartValue;
+
            if(Step=="#1")  { StepInstruction = "\tinx";                    StringaEnd = Register + "!=" + StringaEnd + "+1"; }
       else if(Step=="#2")  { StepInstruction = "\tinx§\tinx";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinx§\tinx§\tinx";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinx§\tinx§\tinx§\tinx";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdex";                    StringaEnd = Register + "!=" + StringaEnd + "-1"; }
+      else if(Step=="#-1") {
+         StepInstruction = "\tdex";
+              if(StringaEnd =="#0") StringaEnd = "NOT NEGATIVE";
+         else if(StringaEnd =="#1") StringaEnd = "NOT ZERO";
+         else                       StringaEnd = Register + "!=" + StringaEnd + "-1";
+      }
       else if(Step=="#-2") { StepInstruction = "\tdex§\tdex";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdex§\tdex§\tdexx";       StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdex§\tdex§\tdex§\tdexx"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1411,7 +1437,12 @@ function IsFOR(Linea: string,  nl: number): string | undefined
       else if(Step=="#2")  { StepInstruction = "\tiny§\tiny";              StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tiny§\tiny§\tiny";        StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tiny§\tiny§\tiny§\tiny";  StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdey";                    StringaEnd = Register + "!=" + StringaEnd + "-1"; }
+      else if(Step=="#-1") {
+         StepInstruction = "\tdey";
+              if(StringaEnd =="#0") StringaEnd = "NOT NEGATIVE";
+         else if(StringaEnd =="#1") StringaEnd = "NOT ZERO";
+         else                       StringaEnd = Register + "!=" + StringaEnd + "-1";
+      }
       else if(Step=="#-2") { StepInstruction = "\tdey§\tdey";              StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdey§\tdey§\tdey";        StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdey§\tdey§\tdey§\tdey";  StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1427,7 +1458,12 @@ function IsFOR(Linea: string,  nl: number): string | undefined
       else if(Step=="#2")  { StepInstruction = "\tclc§\tadc #2";   StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tclc§\tadc #3";   StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tclc§\tadc #4";   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tclc§\tadc #255"; StringaEnd = Register + "!=" + StringaEnd + "-1"; }
+      else if(Step=="#-1") {
+         StepInstruction = "\tclc§\tadc #255";
+              if(StringaEnd =="#0") StringaEnd = "NOT NEGATIVE";
+         else if(StringaEnd =="#1") StringaEnd = "NOT ZERO";
+         else                       StringaEnd = Register + "!=" + StringaEnd + "-1";
+      }
       else if(Step=="#-2") { StepInstruction = "\tclc§\tadc #254"; StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tclc§\tadc #253"; StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tclc§\tadc #252"; StringaEnd = Register + ">=" + StringaEnd + "-4"; }
@@ -1443,7 +1479,12 @@ function IsFOR(Linea: string,  nl: number): string | undefined
       else if(Step=="#2")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register;                                         StringaEnd = Register + "<"  + StringaEnd + "+2"; }
       else if(Step=="#3")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;                      StringaEnd = Register + "<"  + StringaEnd + "+3"; }
       else if(Step=="#4")  { StepInstruction = "\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register+"§\tinc "+Register;   StringaEnd = Register + "<"  + StringaEnd + "+4"; }
-      else if(Step=="#-1") { StepInstruction = "\tdec "+Register;                                                            StringaEnd = Register + "!=" + StringaEnd + "-1"; }
+      else if(Step=="#-1") {
+         StepInstruction = "\tdec "+Register;
+              if(StringaEnd =="#0") StringaEnd = "NOT NEGATIVE";
+         else if(StringaEnd =="#1") StringaEnd = "NOT ZERO";
+         else                       StringaEnd = Register + "!=" + StringaEnd + "-1";
+      }
       else if(Step=="#-2") { StepInstruction = "\tdec "+Register+"§\tdec "+Register;                                         StringaEnd = Register + ">=" + StringaEnd + "-2"; }
       else if(Step=="#-3") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;                      StringaEnd = Register + ">=" + StringaEnd + "-3"; }
       else if(Step=="#-4") { StepInstruction = "\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register+"§\tdec "+Register;   StringaEnd = Register + ">=" + StringaEnd + "-4"; }

@@ -394,6 +394,9 @@ dim b as byte         ; creates a variable in memory
 dim w as word init 3  ; creates a variable in memory and initializes to 3
 
 dim border as byte at 53280  ; creates a variable at absolute address 53280
+
+dim y(12) as byte init 3 ; creates a buffer of 12 bytes and initializes it to 3
+dim x(12) as word        ; creates a buffer of 24 bytes and initializes it to 0
 ```
 
 ## INLINE BASIC

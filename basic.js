@@ -246,7 +246,7 @@ function TranslateBasic(Linea) {
         }
     }
     Compr = Compr + "0";
-    var Label = "basic_row_" + basic_row + ":";
+    var Label = "basic_row_" + basic_row;
     var NextLabel = "basic_row_" + (basic_row + 1);
     var ReplaceTo = cross_1.BYTE(Label, cross_1.parens(cross_1.lobyte(NextLabel)), cross_1.parens(cross_1.hibyte(NextLabel)), cross_1.parens(cross_1.lobyte(numlin.toString())), cross_1.parens(cross_1.hibyte(numlin.toString())), Compr);
     basic_row++;

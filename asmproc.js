@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 "use strict";
-// TODO fix bug rem {}
 // TODO fix bug no build long basic line with {}
 // TODO split table word
 // TODO define function ?
@@ -56,7 +55,6 @@
 // TODO basic tokenizer: alternate names (wht -> white)
 // TODO basic tokenizer: {rev shift} ?
 // TODO basic tokenizer: {cbm } shortcuts
-// TODO basic tokenizer: lowercase/uppercase in strings
 // TODO document preferences: DO LOOP vs WHILE/FOR, IF on single line etc.
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -245,7 +243,8 @@ var StackIf_U = new TStringList();
 var StackFor_U = new TStringList();
 var AllMacros = [];
 var Ferr;
-var Dims = [];
+var Dims_at_end = [];
+var Dims_at_start = [];
 function emitConstDim(t) {
     L.SetText(L.Text().replace(/§/g, "\n"));
 }
@@ -503,20 +502,35 @@ function MakeAllUpperCase() {
 // dim x as byte in zero page
 // dim x as byte init 5
 function IsDim(Linea, nl) {
-    var R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+    // senza (size)
+    // const R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
+    var R = new RegExp(/\s*dim\s+([_a-zA-Z]+[_a-zA-Z0-9]*)(\s*\((.*)\))?\s+as\s+(byte|word|integer|char)((\s+at\s+(.*))|(\s+in\s+zero\s+page)|(\s+init)\s+(.*))?\s*/i);
     var match = R.exec(Linea);
     if (match === null)
         return undefined;
-    var all = match[0], id = match[1], tipo = match[2], part = match[3], atstring = match[4], atvalue = match[5], zeropage = match[6], initstring = match[7], initvalue = match[8];
+    var all = match[0], id = match[1], size = match[2], part1 = match[3], tipo = match[4], part = match[5], atstring = match[6], atvalue = match[7], zeropage = match[8], initstring = match[9], initvalue = match[10];
+    //console.log({all, id, part1, size, tipo, part, atstring, atvalue, zeropage, initstring, initvalue});
     var Result = "";
-    if (atstring !== undefined)
-        Result = "const " + id + " = " + atvalue;
-    else if (zeropage !== undefined)
-        throw "not implemented";
-    else if (initvalue !== undefined)
-        Dims.push(id + " " + tipo + " " + initvalue);
+    var ival = initvalue == undefined ? "0" : initvalue;
+    if (zeropage !== undefined)
+        throw "dim at zero page not implemented";
+    if (atstring !== undefined) {
+        Dims_at_start.push(cross_1.define(id, atvalue));
+    }
+    else if (tipo == "BYTE" || tipo == "CHAR") {
+        if (size == undefined)
+            Dims_at_end.push(cross_1.BYTE(id, ival));
+        else
+            Dims_at_end.push(cross_1.BYTESPACE(id, size, ival));
+    }
+    else if (tipo == "WORD" || tipo == "INTEGER") {
+        if (size == undefined)
+            Dims_at_end.push(cross_1.WORD(id, ival));
+        else
+            Dims_at_end.push(cross_1.WORDSPACE(id, size, ival));
+    }
     else
-        Dims.push(id + " " + tipo + " 0");
+        throw "unknown type " + tipo + " in dim";
     return Result;
 }
 function IsIFDEFIncludeSingle(Linea, nl) {
@@ -820,8 +834,10 @@ function ProcessFile() {
     }).join("§");
     L.Strings[0] = definecode + "§" + L.Strings[0];
     // add global variables created with DIM
-    L.Add(Dims.join("§"));
-    Dims = [];
+    L.SetText(Dims_at_start.join("§") + "§" + L.Text());
+    L.Add(Dims_at_end.join("§"));
+    Dims_at_start = [];
+    Dims_at_end = [];
     // change § into newlines
     L.SetText(L.Text().replace(/§/g, "\n"));
     // substitute reserved keywords
@@ -1216,7 +1232,12 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdex";
-            StringaEnd = Register + "!=" + StringaEnd + "-1";
+            if (StringaEnd == "#0")
+                StringaEnd = "NOT NEGATIVE";
+            else if (StringaEnd == "#1")
+                StringaEnd = "NOT ZERO";
+            else
+                StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdex§\tdex";
@@ -1254,7 +1275,12 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdey";
-            StringaEnd = Register + "!=" + StringaEnd + "-1";
+            if (StringaEnd == "#0")
+                StringaEnd = "NOT NEGATIVE";
+            else if (StringaEnd == "#1")
+                StringaEnd = "NOT ZERO";
+            else
+                StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdey§\tdey";
@@ -1292,7 +1318,12 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tclc§\tadc #255";
-            StringaEnd = Register + "!=" + StringaEnd + "-1";
+            if (StringaEnd == "#0")
+                StringaEnd = "NOT NEGATIVE";
+            else if (StringaEnd == "#1")
+                StringaEnd = "NOT ZERO";
+            else
+                StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tclc§\tadc #254";
@@ -1330,7 +1361,12 @@ function IsFOR(Linea, nl) {
         }
         else if (Step == "#-1") {
             StepInstruction = "\tdec " + Register;
-            StringaEnd = Register + "!=" + StringaEnd + "-1";
+            if (StringaEnd == "#0")
+                StringaEnd = "NOT NEGATIVE";
+            else if (StringaEnd == "#1")
+                StringaEnd = "NOT ZERO";
+            else
+                StringaEnd = Register + "!=" + StringaEnd + "-1";
         }
         else if (Step == "#-2") {
             StepInstruction = "\tdec " + Register + "§\tdec " + Register;

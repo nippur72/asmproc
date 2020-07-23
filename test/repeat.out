@@ -1,8 +1,87 @@
 
-IF_0_START:
-	CP 3
-	JR NZ,IF_0_ELSE
-   LD A,0
-IF_0_ELSE:
-IF_0_END:
+FOR_0_START:
+	LDX #3
+FOR_0_LOOP:
+   TXA
+		dex
+	
+	BPL FOR_0_LOOP
+
+FOR_0_END:
+
+FOR_4_START:
+	LDX #4
+FOR_4_LOOP:
+   TXA
+		dex
+	
+	BNE FOR_4_LOOP
+
+FOR_4_END:
+
+FOR_8_START:
+	LDY #3
+FOR_8_LOOP:
+   TYA
+		dey
+	
+	BPL FOR_8_LOOP
+
+FOR_8_END:
+
+FOR_12_START:
+	LDY #4
+FOR_12_LOOP:
+   TYA
+		dey
+	
+	BNE FOR_12_LOOP
+
+FOR_12_END:
+
+
+FOR_17_START:
+	LDA #3
+FOR_17_LOOP:
+   STA $00
+		clc
+	adc #255
+	
+	BPL FOR_17_LOOP
+
+FOR_17_END:
+
+FOR_21_START:
+	LDA #4
+FOR_21_LOOP:
+   STA $00
+		clc
+	adc #255
+	
+	BNE FOR_21_LOOP
+
+FOR_21_END:
+
+
+FOR_26_START:
+	LDA #3
+	STA MEM
+FOR_26_LOOP:
+   LDA $00
+		dec MEM
+	
+	BPL FOR_26_LOOP
+
+FOR_26_END:
+
+FOR_30_START:
+	LDA #4
+	STA MEM
+FOR_30_LOOP:
+   LDA $00
+		dec MEM
+	
+	BNE FOR_30_LOOP
+
+FOR_30_END:
 

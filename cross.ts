@@ -8,16 +8,42 @@ export const target = {
 
 let JMP: string;
 
+export function WORD(label: string, ...list: string[])
+{
+   let keyword;
+   let wordString = list.join(",");
+
+        if(target.dasm)   return `${label}: word ${wordString}`;
+   else if(target.ca65)   return `${label}: .word ${wordString}`;
+   else if(target.z80asm) return `${label} defw ${wordString}`;
+   else throw "unknown target";
+}
+
 export function BYTE(label: string, ...list: string[])
 {
    let keyword;
    let byteString = list.join(",");
 
-        if(target.dasm)   keyword = "byte";
-   else if(target.ca65)   keyword = ".byte";
-   else if(target.z80asm) keyword = "defb";
+        if(target.dasm)   return `${label}: byte ${byteString}`;
+   else if(target.ca65)   return `${label}: .byte ${byteString}`;
+   else if(target.z80asm) return `${label} defb ${byteString}`;
+   else throw "unknown target";
+}
 
-   return `${label} ${keyword} ${byteString}`;
+export function BYTESPACE(label: string, size: string, value: string)
+{
+        if(target.dasm)   return `${label}: DS ${size}, ${value}`;
+   else if(target.ca65)   return `${label}: .res ${size}, ${value}`;
+   else if(target.z80asm) return `${label} defs ${size}, ${value}`;
+   else throw "unknown target";
+}
+
+export function WORDSPACE(label: string, size: string, value: string)
+{
+        if(target.dasm)   return `${label}: DS (${size})*2, ${value}`;
+   else if(target.ca65)   return `${label}: .res (${size})*2, ${value}`;
+   else if(target.z80asm) return `${label} defs (${size})*2, ${value}`;
+   else throw "unknown target";
 }
 
 export function Jump(dest: string)
@@ -29,7 +55,7 @@ export function Jump(dest: string)
 export function MOD(left: string, right: string)
 {
    if(target.dasm)   return left + " % " + right;     
-   if(target.ca65)   return left + " .MOD " + right;  
+   if(target.ca65)   return left + " .MOD " + right;
    if(target.z80asm) return left + " % " + right;
    throw "";    
 }
@@ -70,8 +96,8 @@ export function lobyte(byte: string) {
 }
 
 export function define(id: string, val: string) {
-      if(target.dasm)   return `${id} EQU ${val}`; 
-   else if(target.ca65)   return `${id} EQU ${val}`; 
+        if(target.dasm)   return `${id} EQU ${val}`;
+   else if(target.ca65)   return `${id} = ${val}`;
    else if(target.z80asm) return `${id} EQU ${val}`; 
    throw "";
 }

@@ -1,6 +1,6 @@
 {
   "name": "asmproc",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "",
   "main": "asmproc.js",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "node asmproc -i test/repeat.lm -o test/repeat.out -t z80asm",
+    "test": "node asmproc -i test/repeat.lm -o test/repeat.out -t dasm",
     "ncc": "nearleyc const.ne -o const.js",
     "nce": "nearleyc expressions.ne -o expressions.js",
     "ncg": "nearleyc grammar.ne -o grammar.js",

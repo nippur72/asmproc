@@ -1,3 +1,33 @@
-IF A=3 THEN
-   LD A,0
-END IF
+for X=#3 to #0 step #-1
+   txa
+next
+
+for X=#4 to #1 step #-1
+   txa
+next
+
+for Y=#3 to #0 step #-1
+   tya
+next
+
+for Y=#4 to #1 step #-1
+   tya
+next
+
+
+for A=#3 to #0 step #-1
+   sta $00
+next
+
+for A=#4 to #1 step #-1
+   sta $00
+next
+
+
+for mem=#3 to #0 step #-1
+   lda $00
+next
+
+for mem=#4 to #1 step #-1
+   lda $00
+next

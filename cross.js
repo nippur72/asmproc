@@ -8,6 +8,23 @@ exports.target = {
     cpuz80: false
 };
 var JMP;
+function WORD(label) {
+    var list = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        list[_i - 1] = arguments[_i];
+    }
+    var keyword;
+    var wordString = list.join(",");
+    if (exports.target.dasm)
+        return label + ": word " + wordString;
+    else if (exports.target.ca65)
+        return label + ": .word " + wordString;
+    else if (exports.target.z80asm)
+        return label + " defw " + wordString;
+    else
+        throw "unknown target";
+}
+exports.WORD = WORD;
 function BYTE(label) {
     var list = [];
     for (var _i = 1; _i < arguments.length; _i++) {
@@ -16,14 +33,37 @@ function BYTE(label) {
     var keyword;
     var byteString = list.join(",");
     if (exports.target.dasm)
-        keyword = "byte";
+        return label + ": byte " + byteString;
     else if (exports.target.ca65)
-        keyword = ".byte";
+        return label + ": .byte " + byteString;
     else if (exports.target.z80asm)
-        keyword = "defb";
-    return label + " " + keyword + " " + byteString;
+        return label + " defb " + byteString;
+    else
+        throw "unknown target";
 }
 exports.BYTE = BYTE;
+function BYTESPACE(label, size, value) {
+    if (exports.target.dasm)
+        return label + ": DS " + size + ", " + value;
+    else if (exports.target.ca65)
+        return label + ": .res " + size + ", " + value;
+    else if (exports.target.z80asm)
+        return label + " defs " + size + ", " + value;
+    else
+        throw "unknown target";
+}
+exports.BYTESPACE = BYTESPACE;
+function WORDSPACE(label, size, value) {
+    if (exports.target.dasm)
+        return label + ": DS (" + size + ")*2, " + value;
+    else if (exports.target.ca65)
+        return label + ": .res (" + size + ")*2, " + value;
+    else if (exports.target.z80asm)
+        return label + " defs (" + size + ")*2, " + value;
+    else
+        throw "unknown target";
+}
+exports.WORDSPACE = WORDSPACE;
 function Jump(dest) {
     if (exports.target.cpu6502)
         return "JMP " + dest; // TODO jump relative for 6502
@@ -95,7 +135,7 @@ function define(id, val) {
     if (exports.target.dasm)
         return id + " EQU " + val;
     else if (exports.target.ca65)
-        return id + " EQU " + val;
+        return id + " = " + val;
     else if (exports.target.z80asm)
         return id + " EQU " + val;
     throw "";
