@@ -153,9 +153,7 @@ end macro
 macro ld16 mem, const
    lda #(({2}) MOD 256)
    sta {1}
-   #if (({2}) MOD 256) != (({2})/256)
-      lda #(({2})/256)
-   #endif   
+   lda #(({2})/256)
    sta {1}+1   
 end macro
 
