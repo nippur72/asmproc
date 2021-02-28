@@ -1730,36 +1730,36 @@ function ParseCond(W) {
             BranchNot = "JR NZ,*";
         }
         else if (Operator == ">=" && signedcond == false) {
-            Branch = "JR C, *";
-            BranchNot = "JR NC,*";
+            Branch = "JR NC,*";
+            BranchNot = "JR C,*";
         }
         else if (Operator == "<=" && signedcond == false) {
-            Branch = "JR NC, *§\tJR Z, *";
-            BranchNot = "JR Z, .+4§\tJR C, *";
+            Branch = "JR C,*§\tJR Z,*";
+            BranchNot = "JR Z,*§\tJR C,*";
         }
         else if (Operator == "<" && signedcond == false) {
-            Branch = "JR NC, *";
-            BranchNot = "JR C, *";
+            Branch = "JR C,*";
+            BranchNot = "JR NC,*";
         }
         else if (Operator == ">" && signedcond == false) {
-            Branch = "JR Z, .+4§\tJR C, *";
-            BranchNot = "JR NC, *§\tJR Z, *";
+            Branch = "JR NZ,*§\tJR C,*";
+            BranchNot = "JR C,*§\tJR Z,*";
         }
         else if (Operator == ">=" && signedcond == true) {
-            Branch = "JP NS, *";
-            BranchNot = "JP S, *";
+            Branch = "JP NS,*";
+            BranchNot = "JP S,*";
         }
         else if (Operator == "<=" && signedcond == true) {
-            Branch = "JP S, *§\tJR Z, *";
-            BranchNot = "JR Z, .+4§\tJP NS, *";
+            Branch = "JP S,*§\tJR Z,*";
+            BranchNot = "JR Z,*§\tJP S,*";
         }
         else if (Operator == "<" && signedcond == true) {
-            Branch = "JP S, *";
-            BranchNot = "JP NS, *";
+            Branch = "JP S,*";
+            BranchNot = "JP NS,*";
         }
         else if (Operator == ">" && signedcond == true) {
-            Branch = "JR Z, .+4§\tJP NS, *";
-            BranchNot = "JP S, *§\tJR Z, *";
+            Branch = "JR NZ,*§\tJP S,*";
+            BranchNot = "JP S,*§\tJR Z,*";
         }
         else
             Operator = "#";
